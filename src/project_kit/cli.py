@@ -5,11 +5,12 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from project_kit import __version__, approval, backlog, doctor, installer, provision
+from project_kit import __version__, approval, backlog, doctor, handoff, installer, provision
 from project_kit.config import PROVIDERS, Config, ConfigError
 from project_kit.gh import Gh, GhError
 from project_kit.providers.github import GitHubProvider
 from project_kit.state import PHASES, StateError
+from project_kit.templating import TemplateError
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -41,6 +42,17 @@ def build_parser() -> argparse.ArgumentParser:
     pv.add_argument("--repo", help="owner/name (default: the repository of the current directory)")
     pv.add_argument("--dry-run", action="store_true", help="show the plan and change nothing")
     pv.add_argument("--yes", action="store_true", help="do not ask for confirmation")
+
+    ho = sub.add_parser(
+        "handoff", help="generate the constitution input and hand the project over to Spec Kit"
+    )
+    ho.add_argument(
+        "--install-speckit",
+        action="store_true",
+        help="install the Spec Kit CLI and initialise this repository, after confirmation",
+    )
+    ho.add_argument("--dry-run", action="store_true", help="show what would happen, change nothing")
+    ho.add_argument("--yes", action="store_true", help="do not ask for confirmation")
 
     ap = sub.add_parser("approve", help="record the user's approval of a phase")
     ap.add_argument("phase", choices=PHASES)
@@ -124,6 +136,20 @@ def _provision(args: argparse.Namespace) -> int:
         return 1
 
 
+def _handoff(args: argparse.Namespace) -> int:
+    try:
+        return handoff.run_handoff(
+            Path.cwd(),
+            install=args.install_speckit,
+            assume_yes=args.yes,
+            dry_run=args.dry_run,
+            confirm=_ask,
+        )
+    except (ConfigError, StateError, TemplateError) as exc:
+        print(f"project-kit handoff: {exc}", file=sys.stderr)
+        return 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -137,6 +163,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _backlog_validate()
     if args.command == "provision":
         return _provision(args)
+    if args.command == "handoff":
+        return _handoff(args)
     if args.command == "approve":
         return _approve(args.phase)
     parser.print_help()

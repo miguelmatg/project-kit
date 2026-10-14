@@ -11,6 +11,7 @@ implementa cada spec.
 
 - [Diseño](docs/design.md): alcance, fases, proveedor, relevo a Spec Kit, decisiones abiertas.
 - [Esquema de `backlog.json`](docs/backlog-schema.md): formato del backlog y reglas de validación.
+- [Relevo a Spec Kit](docs/handoff.md): qué genera `handoff`, cómo instala Spec Kit y qué viene después.
 - [Provisionado en GitHub](docs/provisioning.md): qué crea `provision`, idempotencia y protección de ramas.
 - [Referencia: playbook del flujo](docs/references/template-repo-playbook.md): receta de origen
   (extraída de otro proyecto).
