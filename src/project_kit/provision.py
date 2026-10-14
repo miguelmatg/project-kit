@@ -12,24 +12,18 @@ from pathlib import Path
 from project_kit.backlog import Backlog, load_backlog
 from project_kit.config import Config, ConfigError, load_config
 from project_kit.gh import GhError
+from project_kit.labels import PRIORITY_LABELS, TYPE_LABELS
 from project_kit.providers.github import GitHubProvider, Snapshot
+from project_kit.provision_issues import (
+    IssuePlan,
+    apply_issues,
+    plan_issues,
+    project_title,
+    read_world,
+    record_existing,
+)
 from project_kit.state import State, load_state, save_state
 
-# label name, colour, description. Bugs reuse GitHub's own default "bug" label.
-_TYPE_LABELS = {
-    "epic": ("type:epic", "3E4B9E", "Epic: groups child issues"),
-    "feature": ("type:feature", "1D76DB", "New functionality"),
-    "adr": ("type:adr", "5319E7", "Architecture decision"),
-    "chore": ("type:chore", "6E7781", "Maintenance or technical task"),
-    "docs": ("type:docs", "0075CA", "Documentation"),
-    "bug": ("bug", "D73A4A", "Something is not working"),
-}
-_PRIORITY_LABELS = {
-    "P0": ("P0", "B60205", "Critical priority"),
-    "P1": ("P1", "D93F0B", "High priority"),
-    "P2": ("P2", "FBCA04", "Medium priority"),
-    "P3": ("P3", "C2E0C6", "Low priority"),
-}
 _KIND_ORDER = {"milestone": 0, "label": 1, "branch": 2}
 
 
@@ -63,7 +57,7 @@ class Plan:
 def _desired_labels(backlog: Backlog) -> list[tuple[str, str, str]]:
     wanted: dict[str, tuple[str, str, str]] = {}
     for issue in backlog.issues:
-        for label in (_TYPE_LABELS[issue.type], _PRIORITY_LABELS[issue.priority]):
+        for label in (TYPE_LABELS[issue.type], PRIORITY_LABELS[issue.priority]):
             wanted.setdefault(label[0].lower(), label)
     for label in backlog.labels:
         wanted.setdefault(label.name.lower(), (label.name, label.color, label.description))
@@ -132,7 +126,10 @@ def protection_note(available: bool | None) -> str:
     return "Branch protection: could not be determined. Not attempted."
 
 
-def render_plan(plan: Plan, repo: str, protection: bool | None) -> str:
+def render_plan(
+    plan: Plan, repo: str, protection: bool | None, issues: IssuePlan | None = None
+) -> str:
+    issues = issues or IssuePlan()
     lines = [f"Repository: {repo}", ""]
     if plan.actions:
         lines += ["To create:"] + [f"  {a.describe()}" for a in plan.actions]
@@ -141,6 +138,10 @@ def render_plan(plan: Plan, repo: str, protection: bool | None) -> str:
     have = ", ".join(f"{n} {kind}(s)" for kind, n in plan.existing.items() if n)
     if have:
         lines += ["", f"Already present, left untouched: {have}."]
+    if issues.lines:
+        lines += ["", "Project and issues:"] + [f"  {line}" for line in issues.lines]
+    for note in issues.notes:
+        lines += ["", f"Note: {note}"]
     lines += ["", protection_note(protection)]
     for problem in plan.problems:
         lines += ["", f"BLOCKING: {problem}"]
@@ -192,7 +193,10 @@ def run_provision(
     snap = provider.snapshot()
     protection = provider.branch_protection_available()
     plan = build_plan(backlog, config, snap)
-    out(render_plan(plan, snap.repo.full_name, protection))
+    owner = snap.repo.owner
+    world = read_world(provider, owner, project_title(config))
+    issue_plan = plan_issues(backlog, config, world, state)
+    out(render_plan(plan, snap.repo.full_name, protection, issue_plan))
 
     if plan.problems:
         return 1
@@ -200,25 +204,31 @@ def run_provision(
         out("\nDry run: nothing was changed.")
         return 0
 
-    if not plan.actions:
-        if _record_milestones(state, plan.milestone_ids):
+    total = len(plan.actions) + len(issue_plan.lines)
+    if not total:
+        # Nothing to change on GitHub, but a lost or stale state can still be rebuilt.
+        changed = _record_milestones(state, plan.milestone_ids)
+        if record_existing(backlog, world, state) or changed:
             save_state(root, state)
         out("\nNothing to do.")
         return 0
 
-    if not assume_yes and not confirm(
-        f"\nCreate these {len(plan.actions)} item(s) in {snap.repo.full_name}?"
-    ):
+    if not assume_yes and not confirm(f"\nApply these {total} change(s) in {snap.repo.full_name}?"):
         out("Aborted. Nothing was changed.")
         return 1
 
     _record_milestones(state, plan.milestone_ids)
     try:
         apply_plan(root, provider, plan, state)
+        notes = apply_issues(
+            provider, owner, backlog, config, state, lambda: save_state(root, state)
+        )
     except GhError as exc:
         save_state(root, state)
         out(f"\nStopped: {exc}\nProgress was saved; run the command again to resume.")
         return 1
     save_state(root, state)
-    out(f"\nDone: {len(plan.actions)} item(s) created.")
+    for note in notes:
+        out(f"\nNote: {note}")
+    out(f"\nDone: {total} change(s) applied.")
     return 0

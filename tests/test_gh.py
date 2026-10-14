@@ -100,4 +100,38 @@ def test_not_authenticated_gives_clear_error_without_retry():
 def test_input_is_passed_to_subprocess():
     gh, runner, _ = make(ok("{}"))
     gh.run("api", "graphql", "--input", "-", input='{"query": "x"}')
-    assert runner.calls[0][1]["input"] == '{"query": "x"}'
+    assert runner.calls[0][1]["input"] == b'{"query": "x"}'  # sent as bytes, see the test below
+
+
+def test_stdin_is_sent_byte_for_byte_with_no_newline_translation():
+    """Regression: on Windows, text-mode stdin turned every LF into CRLF in issue bodies."""
+    import sys
+
+    echo = "import sys; sys.stdout.buffer.write(sys.stdin.buffer.read())"
+    gh = Gh(executable=sys.executable, retries=0)
+    body = "line one\nline two\n\n- [ ] item\n"
+    assert gh.run("-c", echo, input=body) == body
+
+
+def test_output_with_crlf_is_normalised_to_lf():
+    """Bodies typed in GitHub's web editor come back with CRLF; comparisons must not care."""
+    import sys
+
+    gh = Gh(executable=sys.executable, retries=0)
+    code = "import sys; sys.stdout.buffer.write(bytes([97, 13, 10, 98, 13, 10]))"  # a CRLF b CRLF
+    assert gh.run("-c", code) == "a\nb\n"
+
+
+def test_rate_limit_gets_a_clear_message_and_is_not_retried():
+    from project_kit.gh import GhRateLimitError
+
+    gh, runner, sleeps = make(fail("GraphQL: API rate limit exceeded for user ID 1."))
+    with pytest.raises(GhRateLimitError, match="Wait a minute"):
+        gh.run("api", "graphql")
+    assert len(runner.calls) == 1 and sleeps == []
+
+
+def test_secondary_rate_limit_is_still_retried():
+    gh, runner, _ = make(fail("You have exceeded a secondary rate limit."), ok("{}"))
+    assert gh.run("api", "x") == "{}"
+    assert len(runner.calls) == 2

@@ -2,15 +2,16 @@ import json
 import subprocess
 
 import pytest
+from fakes import FakeGitHub
 
 from project_kit import installer
 from project_kit.approval import approve_phase
 from project_kit.backlog import backlog_path, parse_backlog
-from project_kit.config import Config
-from project_kit.gh import Gh, GhError
+from project_kit.config import Config, ConfigError
+from project_kit.gh import Gh
 from project_kit.providers.github import GitHubProvider, RepoInfo, Snapshot
 from project_kit.provision import build_plan, protection_note, run_provision
-from project_kit.state import load_state
+from project_kit.state import load_state, save_state
 
 BACKLOG = {
     "version": 1,
@@ -36,56 +37,14 @@ BACKLOG = {
 }
 
 
-def repo_info(default="main", private=True):
-    return RepoInfo("o/r", private, default, True)
-
-
 def snapshot(**kw):
     base = dict(
-        repo=repo_info(),
+        repo=RepoInfo("o/r", True, "main", True),
         labels=set(),
         milestones={},
         branches={"main": "a" * 40},
     )
     return Snapshot(**{**base, **kw})
-
-
-class FakeProvider:
-    """In-memory stand-in for GitHubProvider that also behaves like GitHub afterwards."""
-
-    def __init__(self, snap, protection=False, fail_on=None):
-        self.snap = snap
-        self.protection = protection
-        self.fail_on = fail_on
-        self.calls = []
-
-    def snapshot(self):
-        return self.snap
-
-    def branch_protection_available(self):
-        return self.protection
-
-    def _maybe_fail(self, what):
-        if self.fail_on == what:
-            self.fail_on = None
-            raise GhError(f"boom on {what}")
-
-    def create_milestone(self, title, description):
-        self._maybe_fail(f"milestone:{title}")
-        number = len(self.snap.milestones) + 1
-        self.snap.milestones[title] = number
-        self.calls.append(("milestone", title))
-        return number
-
-    def create_label(self, name, color, description):
-        self._maybe_fail(f"label:{name}")
-        self.snap.labels.add(name.lower())
-        self.calls.append(("label", name, color))
-
-    def create_branch(self, name, sha):
-        self._maybe_fail(f"branch:{name}")
-        self.snap.branches[name] = sha
-        self.calls.append(("branch", name, sha))
 
 
 @pytest.fixture
@@ -147,7 +106,7 @@ def test_existing_items_are_skipped_case_insensitively():
 
 
 def test_main_branch_must_match_default_branch():
-    plan = plan_for(snapshot(repo=repo_info(default="master")))
+    plan = plan_for(snapshot(repo=RepoInfo("o/r", True, "master", True)))
     assert any("default branch is 'master'" in p for p in plan.problems)
 
 
@@ -160,89 +119,87 @@ def test_empty_repository_is_a_blocking_problem():
 # --- running -------------------------------------------------------------------------------
 
 
-def test_apply_creates_everything_and_records_milestone_ids(project):
-    provider = FakeProvider(snapshot())
-    code, out, _ = run(project, provider)
-    assert code == 0 and "Done: 9 item(s) created." in out
-    assert [c[0] for c in provider.calls] == ["milestone"] * 2 + ["label"] * 5 + ["branch"] * 2
+def test_apply_creates_milestones_labels_and_branches_and_records_milestone_ids(project):
+    gh = FakeGitHub()
+    code, out, _ = run(project, gh)
+    assert code == 0 and "Done:" in out
+    order = [c[0] for c in gh.calls if c[0] in ("milestone", "label", "branch")]
+    assert order == ["milestone"] * 2 + ["label"] * 5 + ["branch"] * 2
     state = load_state(project)
     assert state.get_id("milestones", "mvp") == "1"
     assert state.get_id("milestones", "later") == "2"
 
 
 def test_second_run_is_idempotent(project):
-    provider = FakeProvider(snapshot())
-    run(project, provider)
-    provider.calls.clear()
-    code, out, asked = run(project, provider, yes=False)
+    gh = FakeGitHub()
+    run(project, gh)
+    gh.calls.clear()
+    code, out, asked = run(project, gh, yes=False)
     assert code == 0 and "Nothing to do." in out
-    assert provider.calls == [] and asked == []  # nothing to change, so nothing to confirm
+    assert gh.calls == [] and asked == []  # nothing to change, so nothing to confirm
 
 
 def test_dry_run_changes_nothing_and_does_not_need_approval(project):
     state = load_state(project)
     state.approvals.clear()
-    from project_kit.state import save_state
-
     save_state(project, state)
-    provider = FakeProvider(snapshot())
-    code, out, asked = run(project, provider, dry_run=True, yes=False)
+    gh = FakeGitHub()
+    code, out, asked = run(project, gh, dry_run=True, yes=False)
     assert code == 0 and "Dry run: nothing was changed." in out
     assert "+ milestone  v0.1" in out and "+ branch     develop" in out
-    assert provider.calls == [] and asked == []
+    assert gh.calls == [] and asked == []
     assert load_state(project).provider_ids == {}
 
 
 def test_confirmation_is_required_and_a_no_aborts(project):
-    provider = FakeProvider(snapshot())
-    code, out, asked = run(project, provider, yes=False, answer=False)
+    gh = FakeGitHub()
+    code, out, asked = run(project, gh, yes=False, answer=False)
     assert code == 1 and "Aborted" in out
-    assert provider.calls == [] and len(asked) == 1 and "9 item(s)" in asked[0]
+    assert gh.calls == [] and len(asked) == 1 and "change(s)" in asked[0]
 
 
 def test_yes_skips_the_question(project):
-    code, _, asked = run(project, FakeProvider(snapshot()), yes=True)
+    code, _, asked = run(project, FakeGitHub(), yes=True)
     assert code == 0 and asked == []
 
 
 def test_applying_requires_an_approved_plan(project):
     state = load_state(project)
     state.approvals.clear()
-    from project_kit.state import save_state
-
     save_state(project, state)
-    provider = FakeProvider(snapshot())
-    code, out, _ = run(project, provider)
-    assert code == 1 and "not approved" in out and provider.calls == []
+    gh = FakeGitHub()
+    code, out, _ = run(project, gh)
+    assert code == 1 and "not approved" in out and gh.calls == []
 
 
 def test_blocking_problem_stops_before_applying(project):
-    provider = FakeProvider(snapshot(branches={}))
-    code, out, _ = run(project, provider)
-    assert code == 1 and "BLOCKING" in out and provider.calls == []
-    code, _, _ = run(project, provider, dry_run=True)
+    gh = FakeGitHub(branches={})
+    code, out, _ = run(project, gh)
+    assert code == 1 and "BLOCKING" in out and gh.calls == []
+    code, _, _ = run(project, gh, dry_run=True)
     assert code == 1
 
 
 def test_failure_saves_progress_and_a_rerun_resumes(project):
-    provider = FakeProvider(snapshot(), fail_on="label:P1")
-    code, out, _ = run(project, provider)
+    gh = FakeGitHub(fail_on="label:P1")
+    code, out, _ = run(project, gh)
     assert code == 1 and "Stopped" in out and "run the command again" in out
-    done = list(provider.calls)
+    done = list(gh.calls)
     assert ("milestone", "v0.1") in done and not any(c[0] == "branch" for c in done)
     assert load_state(project).get_id("milestones", "mvp") == "1"
 
-    provider.calls.clear()
-    code, out, _ = run(project, provider)
+    gh.calls.clear()
+    code, out, _ = run(project, gh)
     assert code == 0
-    created = {c[1] for c in provider.calls}
+    created = {c[1] for c in gh.calls if c[0] in ("milestone", "label", "branch")}
     assert not created & {"v0.1", "v0.2", "type:epic"}  # earlier work is not repeated
     assert {"P1", "release", "develop"} <= created
 
 
 def test_existing_milestones_are_recorded_in_state(project):
-    snap = snapshot(milestones={"v0.1": 11, "v0.2": 12})
-    run(project, FakeProvider(snap))
+    gh = FakeGitHub()
+    gh.milestones = {"v0.1": 11, "v0.2": 12}
+    run(project, gh)
     assert load_state(project).get_id("milestones", "later") == "12"
 
 
@@ -250,10 +207,8 @@ def test_gitlab_provider_is_rejected(project):
     (project / ".project-kit/config.yml").write_text(
         "project_name: demo\nprovider: gitlab\n", encoding="utf-8"
     )
-    from project_kit.config import ConfigError
-
     with pytest.raises(ConfigError, match="not supported yet"):
-        run(project, FakeProvider(snapshot()))
+        run(project, FakeGitHub())
 
 
 # --- branch protection ---------------------------------------------------------------------
@@ -272,8 +227,8 @@ def test_protection_note(available, text):
 
 
 def test_protection_is_reported_but_never_attempted(project):
-    provider = FakeProvider(snapshot(), protection=False)
-    _, out, _ = run(project, provider, dry_run=True)
+    gh = FakeGitHub(protection=False)
+    _, out, _ = run(project, gh, dry_run=True)
     assert "NOT available" in out and "Not attempted" in out
 
 
@@ -286,9 +241,11 @@ class Script:
     def __init__(self, *results):
         self.results = list(results)
         self.cmds = []
+        self.inputs = []
 
     def __call__(self, cmd, **kwargs):
         self.cmds.append(cmd[1:])
+        self.inputs.append(kwargs.get("input"))
         code, out, err = self.results.pop(0)
         return subprocess.CompletedProcess(cmd, code, stdout=out, stderr=err)
 
@@ -320,6 +277,7 @@ def test_snapshot_collects_labels_milestones_and_branches():
     assert snap.milestones == {"v0.1": 3}
     assert snap.branches == {"main": "abc"}
     assert snap.repo.private and snap.repo.default_branch == "main" and snap.repo.can_admin
+    assert snap.repo.owner == "o"
     assert script.cmds[2][1].startswith("repos/o/r/milestones?state=all&per_page=100&page=1")
 
 
@@ -354,16 +312,8 @@ def test_write_commands_use_the_expected_arguments():
     provider.create_branch("develop", "abc123")
     label, milestone, branch = script.cmds
     assert label == [
-        "label",
-        "create",
-        "P1",
-        "--repo",
-        "o/r",
-        "--color",
-        "D93F0B",
-        "--description",
-        "High",
-    ]
+        "label", "create", "P1", "--repo", "o/r", "--color", "D93F0B", "--description", "High",
+    ]  # fmt: skip
     assert milestone[:4] == ["api", "-X", "POST", "repos/o/r/milestones"]
     assert "title=v0.1" in milestone and "description=First" in milestone
     assert "ref=refs/heads/develop" in branch and "sha=abc123" in branch
