@@ -10,6 +10,7 @@ implementa cada spec.
 ## Documentación
 
 - [Diseño](docs/design.md): alcance, fases, proveedor, relevo a Spec Kit, decisiones abiertas.
+- [Esquema de `backlog.json`](docs/backlog-schema.md): formato del backlog y reglas de validación.
 - [Referencia: playbook del flujo](docs/references/template-repo-playbook.md): receta de origen
   (extraída de otro proyecto).
 

@@ -5,9 +5,9 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from project_kit import __version__, doctor, installer
+from project_kit import __version__, approval, backlog, doctor, installer
 from project_kit.config import PROVIDERS, Config, ConfigError
-from project_kit.state import StateError
+from project_kit.state import PHASES, StateError
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -27,6 +27,13 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--project-name", help="project name (default: the directory name)")
     init.add_argument("--provider", choices=PROVIDERS, default="github")
     init.add_argument("--language", default="en", help="language of the generated documents")
+
+    bl = sub.add_parser("backlog", help="work with .project-kit/backlog.json")
+    bl_sub = bl.add_subparsers(dest="backlog_command", required=True)
+    bl_sub.add_parser("validate", help="validate the backlog and print a summary")
+
+    ap = sub.add_parser("approve", help="record the user's approval of a phase")
+    ap.add_argument("phase", choices=PHASES)
     return parser
 
 
@@ -66,6 +73,26 @@ def _init(args: argparse.Namespace) -> int:
     return 0
 
 
+def _backlog_validate() -> int:
+    try:
+        loaded = backlog.load_backlog(Path.cwd())
+    except backlog.BacklogError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+    print("Backlog is valid.\n" + loaded.summary())
+    return 0
+
+
+def _approve(phase: str) -> int:
+    try:
+        approval.approve_phase(Path.cwd(), phase)
+    except (ConfigError, StateError, backlog.BacklogError) as exc:
+        print(f"project-kit approve: {exc}", file=sys.stderr)
+        return 1
+    print(f"Phase '{phase}' approved.")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -75,5 +102,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return doctor.exit_code(checks)
     if args.command == "init":
         return _init(args)
+    if args.command == "backlog":
+        return _backlog_validate()
+    if args.command == "approve":
+        return _approve(args.phase)
     parser.print_help()
     return 0
