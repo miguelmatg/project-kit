@@ -126,6 +126,8 @@ Operaciones que debe ofrecer un proveedor (todas idempotentes, con reintentos y 
 | `templates.install()` | `.github/ISSUE_TEMPLATE`, PR template | `.gitlab/issue_templates`, MR templates |
 | `views.hint()` | vistas manuales (sin API) | n/a |
 
+**Implementación:** cada proveedor es código Python que invoca la CLI oficial (`gh` para GitHub, `glab` para GitLab) como **subproceso** (`subprocess`, salida `--format json`/`--json` parseada), en lugar de reimplementar su API. Hereda así la autenticación y los scopes del usuario. Los reintentos con backoff envuelven cada llamada. `doctor` comprueba que la CLI existe, la versión y los scopes (`repo`, `project`).
+
 Notas heredadas de GitHub: sin protección en repos privados con plan gratuito (debe
 detectarlo y documentarlo en las normas); sin API para crear vistas del Project;
 errores 502/GraphQL intermitentes (reintentos, varias pasadas, esperar antes de
@@ -174,6 +176,7 @@ scripts de GitHub con las correcciones, y 11 trampas conocidas (PATH de `gh`, sc
 | D3 | ¿Fases 1–3 totalmente guiadas o con plantillas para rellenar a mano? | Guiadas / plantillas / ambas | Ambas: entrevista + documento editable |
 | D4 | Nombre y licencia | `project-kit`; licencia por decidir | Decidir antes de publicar |
 | D5 | Visibilidad del repo | Privado (ahora) → público si se quiere compartir | Privado hasta tener una versión usable |
+| D7 | Acceso a proveedores | API directa / CLI como subproceso | **DECIDIDO: CLI como subproceso** (`gh`, luego `glab`); requisito comprobado por `doctor` |
 | D6 | Alcance del primer MVP | init + discover + plan + provision(GitHub) + handoff | Ver §12 |
 
 ## 12. Hoja de ruta de project-kit
