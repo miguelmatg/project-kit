@@ -5,7 +5,7 @@ arquitectura y montar su flujo de desarrollo y gestión (GitHub primero, GitLab 
 Al terminar entrega el relevo a [Spec Kit](https://github.com/github/spec-kit), que define e
 implementa cada spec.
 
-> Estado: diseño. Aún no hay código. Ver [`docs/design.md`](docs/design.md).
+> Estado: diseño y esqueleto del paquete (v0.1 en desarrollo). Ver [`docs/design.md`](docs/design.md).
 
 ## Documentación
 
@@ -16,3 +16,15 @@ implementa cada spec.
 ## Ramas
 
 `main` (estable), `release` (pruebas) y `develop` (desarrollo). Todo entra por PR.
+
+## Desarrollo
+
+Requiere [uv](https://docs.astral.sh/uv/).
+
+```
+uv sync                 # entorno y dependencias
+uv run project-kit --version
+uv run pytest           # tests
+uv run ruff check .     # lint
+uv run ruff format .    # formato
+```
