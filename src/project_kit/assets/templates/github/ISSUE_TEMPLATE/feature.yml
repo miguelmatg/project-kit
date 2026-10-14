@@ -1,0 +1,22 @@
+name: Feature
+description: New functionality or improvement
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What problem it solves and why
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
