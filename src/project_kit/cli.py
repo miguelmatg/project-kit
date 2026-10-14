@@ -5,8 +5,10 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from project_kit import __version__, approval, backlog, doctor, installer
+from project_kit import __version__, approval, backlog, doctor, installer, provision
 from project_kit.config import PROVIDERS, Config, ConfigError
+from project_kit.gh import Gh, GhError
+from project_kit.providers.github import GitHubProvider
 from project_kit.state import PHASES, StateError
 
 
@@ -31,6 +33,14 @@ def build_parser() -> argparse.ArgumentParser:
     bl = sub.add_parser("backlog", help="work with .project-kit/backlog.json")
     bl_sub = bl.add_subparsers(dest="backlog_command", required=True)
     bl_sub.add_parser("validate", help="validate the backlog and print a summary")
+
+    pv = sub.add_parser(
+        "provision",
+        help="create milestones, labels and branches on GitHub from the backlog",
+    )
+    pv.add_argument("--repo", help="owner/name (default: the repository of the current directory)")
+    pv.add_argument("--dry-run", action="store_true", help="show the plan and change nothing")
+    pv.add_argument("--yes", action="store_true", help="do not ask for confirmation")
 
     ap = sub.add_parser("approve", help="record the user's approval of a phase")
     ap.add_argument("phase", choices=PHASES)
@@ -93,6 +103,27 @@ def _approve(phase: str) -> int:
     return 0
 
 
+def _ask(question: str) -> bool:
+    try:
+        return input(f"{question} [y/N] ").strip().lower() in ("y", "yes")
+    except EOFError:  # no terminal attached: never assume consent
+        return False
+
+
+def _provision(args: argparse.Namespace) -> int:
+    try:
+        return provision.run_provision(
+            Path.cwd(),
+            GitHubProvider(Gh(), args.repo),
+            dry_run=args.dry_run,
+            assume_yes=args.yes,
+            confirm=_ask,
+        )
+    except (ConfigError, StateError, backlog.BacklogError, GhError) as exc:
+        print(f"project-kit provision: {exc}", file=sys.stderr)
+        return 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -104,6 +135,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _init(args)
     if args.command == "backlog":
         return _backlog_validate()
+    if args.command == "provision":
+        return _provision(args)
     if args.command == "approve":
         return _approve(args.phase)
     parser.print_help()
