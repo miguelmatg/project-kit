@@ -22,6 +22,9 @@ _TRANSIENT = re.compile(
     r"|temporary failure|try again later|secondary rate limit",
     re.IGNORECASE,
 )
+# A *primary* limit or a burst limit: retrying within seconds does not help, so it is reported
+# instead (the "secondary rate limit" wording is still retried, see _TRANSIENT).
+_RATE_LIMITED = re.compile(r"rate limit exceeded|api rate limit", re.IGNORECASE)
 _NOT_AUTHENTICATED = re.compile(
     r"gh auth login|not logged in|authentication required|bad credentials|http 401",
     re.IGNORECASE,
@@ -55,6 +58,19 @@ class GhAuthError(GhError):
     """``gh`` is installed but there is no valid session."""
 
 
+class GhRateLimitError(GhError):
+    """GitHub's API rate limit was reached."""
+
+
+def _decode(data: bytes | str | None) -> str:
+    """Output as text with LF line endings, whatever the platform or how GitHub stored it
+    (bodies typed in the web editor come back with CRLF)."""
+    if data is None:
+        return ""
+    text = data.decode("utf-8", errors="replace") if isinstance(data, bytes) else data
+    return text.replace("\r\n", "\n")
+
+
 class Gh:
     """Runs ``gh`` commands. ``runner`` and ``sleep`` are injectable for tests."""
 
@@ -80,7 +96,11 @@ class Gh:
         while True:
             try:
                 proc = self._runner(
-                    cmd, input=input, capture_output=True, text=True, encoding="utf-8"
+                    cmd,
+                    # Bytes, not text: in text mode Windows turns every LF we send into
+                    # CRLF, which would end up in issue bodies.
+                    input=None if input is None else input.encode("utf-8"),
+                    capture_output=True,
                 )
             except FileNotFoundError as exc:
                 raise GhNotFoundError(
@@ -90,9 +110,17 @@ class Gh:
                 ) from exc
 
             if proc.returncode == 0:
-                return proc.stdout
+                return _decode(proc.stdout)
 
-            stderr = (proc.stderr or "").strip()
+            stderr = _decode(proc.stderr).strip()
+            if _RATE_LIMITED.search(stderr) and not _TRANSIENT.search(stderr):
+                raise GhRateLimitError(
+                    "GitHub's API rate limit was reached. Wait a minute (longer if it "
+                    "happens again) and run the command again; progress so far is saved.",
+                    args_=args,
+                    returncode=proc.returncode,
+                    stderr=stderr,
+                )
             if _NOT_AUTHENTICATED.search(stderr):
                 raise GhAuthError(
                     "gh is not authenticated. Run `gh auth login` (scopes needed: repo, project).",
