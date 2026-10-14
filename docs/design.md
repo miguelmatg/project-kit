@@ -100,12 +100,13 @@ project-kit/
 ├── providers/
 │   ├── github/                      # implementación de la interfaz de proveedor
 │   └── gitlab/                      # (fase posterior)
-├── src/ (o pkg/)                    # CLI: init, doctor, install, upgrade, provision
+├── pyproject.toml                   # paquete Python (uv), entrada `project-kit`
+├── src/project_kit/                 # CLI: init, doctor, install, upgrade, provision
 ├── docs/ (diseño, referencias)
 └── tests/
 ```
 
-CLI mínimo: `project-kit init`, `doctor` (diagnóstico de requisitos), `upgrade`
+Instalación: `uv tool install project-kit` (o desde git) y `project-kit init --here` en la raíz del repo destino.\nCLI mínimo: `project-kit init`, `doctor` (diagnóstico de requisitos), `upgrade`
 (actualiza skills/plantillas respetando ediciones), `provision`, `status`.
 
 ## 7. Interfaz de proveedor
@@ -168,7 +169,7 @@ scripts de GitHub con las correcciones, y 11 trampas conocidas (PATH de `gh`, sc
 
 | # | Decisión | Opciones | Recomendación |
 |---|----------|----------|---------------|
-| D1 | **Lenguaje/runtime e instalación** | (a) Paquete Python distribuido con `uv tool install`, CLI en Python; (b) CLI en TypeScript/Node distribuido por npm; (c) distribución con `uv` pero scripts en TS (exige Node además de Python) | Se marcaron a la vez "paquete Python con uv" y "TypeScript/Node": son incompatibles como runtime único. **Recomiendo (a)**: `uv` ya es requisito de Spec Kit, una sola dependencia y una sola instalación. Elegir (b) solo si se prefiere npm. Evitar (c) |
+| D1 | **Lenguaje/runtime e instalación** | (a) Python con `uv tool install`; (b) TypeScript/npm; (c) mixto | **DECIDIDO: (a) Python distribuido con uv.** Se instala como Spec Kit (`uv tool install project-kit`, comando `project-kit init --here`), copiando skills y scripts a la raíz del repo, sin `node_modules`. `uv` ya es requisito de Spec Kit: una sola dependencia. Scripts y CLI en Python |
 | D2 | Forma de las skills | Skills de Claude Code en `.claude/skills` (como Spec Kit) / además soporte para otros agentes | Empezar con Claude Code |
 | D3 | ¿Fases 1–3 totalmente guiadas o con plantillas para rellenar a mano? | Guiadas / plantillas / ambas | Ambas: entrevista + documento editable |
 | D4 | Nombre y licencia | `project-kit`; licencia por decidir | Decidir antes de publicar |
