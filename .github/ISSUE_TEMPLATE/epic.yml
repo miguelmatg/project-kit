@@ -1,0 +1,15 @@
+name: Épica
+description: Agrupa varias issues de una misma entrega
+labels: ["type:epic"]
+body:
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+    validations:
+      required: true
+  - type: textarea
+    id: hijas
+    attributes:
+      label: Issues hijas
+      placeholder: "- [ ] #123"

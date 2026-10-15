@@ -1,0 +1,63 @@
+# project-kit workflow: the phases a project goes through before it is handed to Spec Kit.
+# Safe to edit by hand. Same idea as Spec Kit's workflow.yml: an ordered list of steps with
+# review gates, read by the skills to know what comes next.
+#
+#   gate: true       the phase ends with an explicit approval (`project-kit approve <id>`)
+#   enabled: false   skip the phase (small projects); later gates stop waiting for it
+#
+# The order is fixed and the ids are the ones project-kit knows; only `enabled`, `gate`,
+# `title` and `produces` are meant to be changed.
+schema_version: "1.0"
+workflow:
+  id: "project-kit"
+  name: "Project definition flow"
+  description: "From an idea to a provisioned repository and a Spec Kit handoff"
+
+steps:
+  - id: init
+    title: "Set up project-kit in the repository"
+    skill: pk-start
+    gate: false
+    produces:
+      - .project-kit/config.yml
+
+  - id: discover
+    title: "Define what the project is: problem, users, scope, constraints"
+    skill: pk-discover
+    gate: true
+    produces:
+      - docs/project/brief.md
+
+  - id: decide
+    title: "Decide the stack and the architecture"
+    skill: pk-decide
+    gate: true
+    produces:
+      - docs/adr/
+
+  - id: workflow
+    title: "Agree how the team will work: branches, reviews, quality gates"
+    skill: pk-workflow
+    gate: true
+    produces:
+      - docs/development-workflow.md
+
+  - id: plan
+    title: "Turn it all into phases, epics and a backlog"
+    skill: pk-plan
+    gate: true
+    produces:
+      - docs/project/roadmap.md
+      - .project-kit/backlog.json
+
+  - id: provision
+    title: "Create milestones, labels, branches, the Project and the issues"
+    skill: pk-provision
+    gate: false
+
+  - id: handoff
+    title: "Hand over to Spec Kit: constitution, then one spec per issue"
+    skill: pk-handoff
+    gate: true
+    produces:
+      - .project-kit/handoff/constitution-input.md
