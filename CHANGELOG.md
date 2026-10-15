@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0](https://github.com/miguelmatg/project-kit/compare/v0.1.0...v0.2.0) (2026-10-15)
+
+
+### Features
+
+* add upgrade to bring a project's skills and templates up to date ([#39](https://github.com/miguelmatg/project-kit/issues/39)) ([0750240](https://github.com/miguelmatg/project-kit/commit/0750240c8fb1e9bfc222073aeaef784c4fa56dfb))
+* build the constitution from the project's rules and ask with selection lists ([#38](https://github.com/miguelmatg/project-kit/issues/38)) ([fc1b382](https://github.com/miguelmatg/project-kit/commit/fc1b38201d264cac9c6eeaaa3d89ca0430e98176))
+
+
+### Bug Fixes
+
+* README de usuario para la página de PyPI ([#37](https://github.com/miguelmatg/project-kit/issues/37)) ([2365bc6](https://github.com/miguelmatg/project-kit/commit/2365bc65d57db2dda4a588270bdfd65b7cbf84ea))
+
 ## 0.1.0 (2026-10-15)
 
 
