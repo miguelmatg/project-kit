@@ -79,6 +79,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="create milestones, labels and branches on GitHub from the backlog",
     )
     pv.add_argument("--repo", help="owner/name (default: the repository of the current directory)")
+    pv.add_argument(
+        "--project",
+        help="GitHub Project to use: its number or exact title, or a new title to create "
+        "(default: detect the ones linked to the repository)",
+    )
     pv.add_argument("--dry-run", action="store_true", help="show the plan and change nothing")
     pv.add_argument("--yes", action="store_true", help="do not ask for confirmation")
 
@@ -234,6 +239,8 @@ def _provision(args: argparse.Namespace) -> int:
             dry_run=args.dry_run,
             assume_yes=args.yes,
             confirm=_ask,
+            project=args.project,
+            interactive=sys.stdin.isatty(),
         )
     except (ConfigError, StateError, backlog.BacklogError, GhError) as exc:
         print(f"project-kit provision: {exc}", file=sys.stderr)

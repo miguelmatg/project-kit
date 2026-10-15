@@ -19,6 +19,12 @@ This writes to the provider, so nothing happens without the user's explicit cons
 1. Run `project-kit provision --dry-run` and show the user the plan it prints: what will be
    created, what already exists, and the note about branch protection.
    - A `BLOCKING` line means nothing can be applied; explain it and help fix it.
+   - The `Project:` line says which GitHub Project will be used: one already linked to the
+     repository (`already exists`) or a new one. Tell the user and ask whether that is the one
+     they want. If not, rerun with `--project "<number or exact title>"` to use another
+     existing Project, or with a new title to create it.
+   - If it stops with "Several Projects match this repository", show the list, ask the user
+     which one (or a name for a new one) and rerun with `--project`. The choice is remembered.
 2. Ask the user whether to go ahead. Only after an explicit "yes" run
    `project-kit provision --yes`. Never pass `--yes` without that consent.
 3. Report the result. Running the command again is always safe: it only creates what is

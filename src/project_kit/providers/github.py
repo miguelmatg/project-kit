@@ -38,6 +38,7 @@ class ProjectRef:
     number: int
     id: str
     url: str
+    title: str = ""
 
 
 @dataclass
@@ -190,13 +191,37 @@ class GitHubProvider:
             raise GhError(f"GraphQL error: {data['errors'][0].get('message', data['errors'])}")
         return data["data"]
 
-    def find_project(self, owner: str, title: str) -> ProjectRef | None:
+    def list_projects(self, owner: str) -> list[ProjectRef]:
+        """The owner's open Projects."""
         data = self.gh.json(
             "project", "list", "--owner", owner, "--limit", "200", "--format", "json"
         )
-        for p in data["projects"]:
-            if p["title"] == title and not p.get("closed"):
-                return ProjectRef(p["number"], p["id"], p["url"])
+        return [
+            ProjectRef(p["number"], p["id"], p["url"], p["title"])
+            for p in data["projects"]
+            if not p.get("closed")
+        ]
+
+    def linked_projects(self) -> list[ProjectRef]:
+        """The open Projects already linked to this repository."""
+        owner, _, name = self._repo.partition("/")
+        data = self._graphql(
+            "query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) {"
+            " projectsV2(first: 50) { nodes { number id url title closed } } } }",
+            {"owner": owner, "name": name},
+        )
+        nodes = (data.get("repository") or {}).get("projectsV2", {}).get("nodes") or []
+        return [
+            ProjectRef(n["number"], n["id"], n["url"], n["title"])
+            for n in nodes
+            if n and not n.get("closed")
+        ]
+
+    def find_project(self, owner: str, title: str, number: int | None = None) -> ProjectRef | None:
+        """By number when given (a Project chosen earlier), else by exact title."""
+        for p in self.list_projects(owner):
+            if p.number == number if number is not None else p.title == title:
+                return p
         return None
 
     def create_project(self, owner: str, title: str) -> ProjectRef:

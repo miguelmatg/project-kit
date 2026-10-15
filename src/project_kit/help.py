@@ -23,7 +23,7 @@ TERMINAL_COMMANDS = (
     ("project-kit doctor", "check that git, gh, uv and Spec Kit are available"),
     ("project-kit approve <phase>", "record your sign-off of a phase"),
     ("project-kit backlog validate", "check .project-kit/backlog.json"),
-    ("project-kit provision [--dry-run]", "create milestones, branches, issues on GitHub"),
+    ("project-kit provision [--dry-run]", "create milestones, branches, Project, issues"),
     ("project-kit handoff [--install-speckit]", "prepare the Spec Kit constitution input"),
     ("project-kit help", "show this guide"),
 )
