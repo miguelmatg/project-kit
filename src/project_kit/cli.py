@@ -221,6 +221,9 @@ def _approve(phase: str) -> int:
         print(f"project-kit approve: {exc}", file=sys.stderr)
         return 1
     print(f"Phase '{phase}' approved.")
+    if phase == "handoff":
+        for rel in handoff.finish_handoff(Path.cwd()):
+            print(f"Removed {rel.as_posix()}: the constitution carries its content now.")
     return 0
 
 
@@ -261,7 +264,24 @@ def _handoff(args: argparse.Namespace) -> int:
         return 1
 
 
+def _utf8_output() -> None:
+    """Print UTF-8 whatever the console code page is.
+
+    Without a terminal (a pipe, a tool, a file) Python on Windows encodes with the ANSI code
+    page, and the accents of the project's documents come out as replacement characters.
+    A real terminal is left alone: it has its own, correct, path.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        if stream.isatty():
+            continue
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass  # a stream that cannot be reconfigured keeps what it has
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    _utf8_output()
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.command == "doctor":

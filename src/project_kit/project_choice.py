@@ -43,6 +43,21 @@ def stored_target(state: State, config: Config) -> Target | None:
     return Target(state.get_id("project", "title") or default_title(config), int(number))
 
 
+def _ask_or_explain(ask: Callable[[str], str]) -> Callable[[str], str]:
+    """A terminal that cannot answer (closed stdin, a tool) is an instruction, not a crash."""
+
+    def wrapped(prompt: str) -> str:
+        try:
+            return ask(prompt)
+        except EOFError:
+            raise ProjectChoiceError(
+                "There is no terminal to ask which GitHub Project to use. Choose one with "
+                "--project <number or title>, or a new title to create it."
+            ) from None
+
+    return wrapped
+
+
 def _describe(project: ProjectRef) -> str:
     return f"{project.title} (#{project.number}) {project.url}"
 
@@ -89,8 +104,8 @@ def resolve_target(
     candidates = list(provider.linked_projects())
     linked = {p.number for p in candidates}
     candidates += [p for p in owned if p.title == default and p.number not in linked]
-    ask = ask or input
     can_ask = interactive and not assume_yes
+    ask = _ask_or_explain(ask or input)
 
     if not candidates:
         if can_ask:

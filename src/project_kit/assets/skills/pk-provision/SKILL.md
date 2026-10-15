@@ -16,17 +16,23 @@ This writes to the provider, so nothing happens without the user's explicit cons
 
 ## Steps
 
-1. Run `project-kit provision --dry-run` and show the user the plan it prints: what will be
-   created, what already exists, and the note about branch protection.
+1. Run `project-kit provision --dry-run`. You have no terminal for the command's own
+   questions, so it never asks: it uses the only Project it finds, or stops and tells you what
+   to choose. Show the user the plan it prints: what will be created, what already exists, and
+   the note about branch protection.
    - A `BLOCKING` line means nothing can be applied; explain it and help fix it.
    - The `Project:` line says which GitHub Project will be used: one already linked to the
-     repository (`already exists`) or a new one. Tell the user and ask whether that is the one
-     they want. If not, rerun with `--project "<number or exact title>"` to use another
-     existing Project, or with a new title to create it.
-   - If it stops with "Several Projects match this repository", show the list, ask the user
-     which one (or a name for a new one) and rerun with `--project`. The choice is remembered.
-2. Ask the user whether to go ahead. Only after an explicit "yes" run
-   `project-kit provision --yes`. Never pass `--yes` without that consent.
+     repository (`already exists`) or a new one. Ask which one they want with a selection
+     list (`AskUserQuestion`, see `.project-kit/templates/interview.md`): the detected
+     Project (Recommended), another existing one, or a new one (then ask its name). Whatever
+     they choose, run the dry run again with `--project "<number or exact title>"` (a new
+     title creates it), so the plan matches. The choice is remembered afterwards.
+   - If it stops with "Several Projects match this repository" or "There is no terminal to
+     ask which GitHub Project to use", offer the listed Projects (up to three, plus "Other"
+     for a new name) in a selection list and rerun with `--project`.
+2. Ask with a selection list whether to go ahead (**Create it all** / **Not yet**). Only after
+   the first run `project-kit provision --yes` (with the same `--project`). Never pass `--yes`
+   without that consent.
 3. Report the result. Running the command again is always safe: it only creates what is
    missing, never rewrites existing issues and never moves cards the user has moved.
 

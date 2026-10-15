@@ -4,6 +4,7 @@ from pathlib import Path
 
 from project_kit.backlog import load_backlog
 from project_kit.config import load_config
+from project_kit.handoff import CONSTITUTION, INPUT_FILE, constitution_ready
 from project_kit.state import PHASES, State, StateError, load_state, save_state
 from project_kit.workflow import load_workflow
 
@@ -29,6 +30,12 @@ def approve_phase(root: Path, phase: str) -> State:
         )
     if phase == "plan":
         load_backlog(root)
+    if phase == "handoff" and not constitution_ready(root):
+        raise StateError(
+            f"The Spec Kit constitution is not written yet ({CONSTITUTION.as_posix()} is missing "
+            "or still the template). In Claude Code run "
+            f"/speckit-constitution @{INPUT_FILE.as_posix()} first."
+        )
     state.approve(phase)
     if PHASES.index(phase) > PHASES.index(state.phase):
         state.phase = phase

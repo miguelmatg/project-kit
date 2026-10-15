@@ -9,7 +9,7 @@ nothing in this document asks for features to be built.
 
 ### I. Spec-driven development (NON-NEGOTIABLE)
 Every feature follows specify, clarify, plan, tasks, implement. There is no product code
-without an approved spec. Each spec lives in its own branch `NNN-name`, created from
+without an approved spec. Each spec lives in its own branch `{{spec_branch}}`, created from
 `{{branches.develop}}`, and in `specs/NNN-name/`. Trivial changes (typos, dependency bumps,
 configuration) may go as `chore/*` without a spec.
 
@@ -47,13 +47,12 @@ in `docs/adr/`.
 
 - Permanent branches: `{{branches.main}}` (released product), `{{branches.release}}`
   (testing and acceptance) and `{{branches.develop}}` (development).
-- Working branches start from `{{branches.develop}}`: `NNN-name` (one per spec), `chore/*`,
+- Working branches start from `{{branches.develop}}`: `{{spec_branch}}` (one per spec), `chore/*`,
   `docs/*` and `fix/*`. `hotfix/*` starts from `{{branches.main}}`.
 - Promotion flows `{{branches.develop}}` to `{{branches.release}}` to `{{branches.main}}`. A
   hotfix goes to `{{branches.main}}` and `{{branches.release}}` and is then propagated back
   to `{{branches.develop}}`.
-- Squash merge into `{{branches.develop}}`; merge commit into `{{branches.release}}` and
-  `{{branches.main}}`. Releases are tagged `vX.Y.Z` (SemVer) on `{{branches.main}}`.
+- {{merge_summary}} Releases are tagged `vX.Y.Z` (SemVer) on `{{branches.main}}`.
 - Commits follow Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `test:`,
   `refactor:`, `ci:`).
 - Everything goes through a pull request. There is no direct push to a permanent branch.
@@ -70,6 +69,13 @@ in `docs/adr/`.
 ## Decisions on record
 
 {{decisions}}
+
+## Where the project's rules live
+
+Follow these sources instead of restating them in a spec. When two disagree, fix the source
+that is wrong rather than working around it.
+
+{{rules_index}}
 {{extra}}
 ## Governance
 
