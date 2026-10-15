@@ -1,0 +1,14 @@
+#!/bin/sh
+# project-kit: keep AI assistants out of the commit history.
+# Removes "Co-authored-by:" trailers added by AI tools, and their "Generated with" lines.
+# Enable with:  git config core.hooksPath .githooks
+file="$1"
+tmp="$file.pk-tmp"
+grep -v -i -E \
+  -e '^co-authored-by:.*(claude|anthropic|copilot|openai|chatgpt|codex|gemini|cursor|aider|devin)' \
+  -e '^.*generated with.*(claude|copilot|codex|gemini|cursor)' \
+  "$file" > "$tmp"
+# grep exits 1 when nothing is left (an empty message): keep that case valid and silent.
+cat "$tmp" > "$file"
+rm -f "$tmp"
+exit 0

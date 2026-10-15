@@ -25,9 +25,12 @@ user at the first specs. Spec Kit owns `.specify/`; project-kit never writes ins
 5. Tell the user to run, in this session:
    `/speckit-constitution @.project-kit/handoff/constitution-input.md`
    You cannot run that command for them.
-6. After the constitution exists, suggest mentioning `docs/project/` and `docs/adr/` in
-   `CLAUDE.md` or `AGENTS.md`, and explain that each backlog issue is a candidate spec: its
-   text is the input of `/speckit-specify`.
+6. After the constitution exists, suggest mentioning `docs/project/`, `docs/adr/` and
+   `docs/development-workflow.md` in `CLAUDE.md` or `AGENTS.md`. Explain that from here Spec
+   Kit does the work: each backlog issue is one spec, and its text (description and acceptance
+   criteria) is the input of `/speckit-specify`; then `/speckit-clarify`, `/speckit-plan`,
+   `/speckit-tasks` and `/speckit-implement`. project-kit does not write specs.
+   Suggest the order: the issues of the first phase, by priority.
 7. When the user confirms the constitution is in place, run `project-kit approve handoff`.
 
 ## Rules
