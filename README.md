@@ -124,6 +124,11 @@ From there Spec Kit does the work. Each issue of the backlog is one spec: its te
 `/speckit-specify`, followed by `/speckit-clarify`, `/speckit-plan`, `/speckit-tasks` and
 `/speckit-implement`. project-kit never writes inside `.specify/` and does not write specs.
 
+The constitution is generated from your own rules: the branch pattern and merge strategy you agreed,
+the decisions on record, and an index of where each kind of rule lives (including the GitHub
+Project used for tasks). Once the constitution is written, `project-kit approve handoff` deletes
+the temporary input files; from then on the constitution is the single source.
+
 ## What it adds to your repository
 
 ```
