@@ -2,18 +2,22 @@
 
 Rule: never overwrite. A file that already exists is kept as it is (whether or not it
 differs from the shipped one), so manual edits are safe and running ``init`` again is a
-no-op. Updating shipped files is the job of the future ``upgrade`` command.
+no-op. Updating shipped files is the job of ``upgrade``; to make that possible ``init`` records
+in ``.project-kit/installed.json`` the digest of every shipped file it finds identical to ours.
 """
 
+import contextlib
+import os
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from importlib.resources import files
 from importlib.resources.abc import Traversable
 from pathlib import Path
 
-from project_kit import ai_attribution
+from project_kit import __version__, ai_attribution
 from project_kit.config import PROJECT_DIR, Config, config_path, load_config, save_config
 from project_kit.fsutil import atomic_write_text
+from project_kit.manifest import digest, load_manifest, save_manifest
 from project_kit.state import State, save_state, state_path
 
 # Where each shipped asset directory lands in the target repository.
@@ -49,10 +53,24 @@ def iter_assets() -> Iterator[tuple[Path, bytes]]:
             yield target / rel, node.read_bytes()
 
 
+def shipped_files(config: Config) -> Iterator[tuple[Path, bytes]]:
+    """Everything project-kit installs for this project, as ``init`` and ``upgrade`` see it."""
+    yield from iter_assets()
+    if not config.ai_coauthor:  # the commit-msg hook only exists when the project asked for it
+        yield ai_attribution.HOOK, ai_attribution.hook_bytes()
+
+
+def make_executable(path: Path, rel: Path) -> None:
+    if rel.name == ai_attribution.HOOK.name:
+        with contextlib.suppress(OSError):  # no executable bit on some filesystems (Windows)
+            os.chmod(path, 0o755)
+
+
 def _install_file(root: Path, rel: Path, content: bytes, report: Report) -> None:
     dest = root / rel
     if dest.exists():
-        (report.unchanged if dest.read_bytes() == content else report.kept).append(rel)
+        same = digest(dest.read_bytes()) == digest(content)
+        (report.unchanged if same else report.kept).append(rel)
         return
     atomic_write_text(dest, content.decode("utf-8"))
     report.created.append(rel)
@@ -96,5 +114,21 @@ def init_project(root: Path, config: Config) -> Report:
 
     for rel, content in iter_assets():
         _install_file(root, rel, content, report)
-    _apply_ai_policy(root, load_config(root), report)
+    config = load_config(root)
+    _apply_ai_policy(root, config, report)
+    _record_installed(root, config)
     return report
+
+
+def _record_installed(root: Path, config: Config) -> None:
+    """Remember the digest of each shipped file that is, as of now, exactly ours.
+
+    A file that differs is not recorded: nobody knows whether it is an old version of ours or
+    an edit, and ``upgrade`` must not guess that for itself.
+    """
+    manifest = load_manifest(root)
+    for rel, content in shipped_files(config):
+        path = root / rel
+        if path.exists() and digest(path.read_bytes()) == digest(content):
+            manifest.record(rel, content)
+    save_manifest(root, manifest, __version__)

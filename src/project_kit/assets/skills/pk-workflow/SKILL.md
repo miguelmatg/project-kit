@@ -36,11 +36,28 @@ Read `.project-kit/templates/interview.md` first and follow it.
 1. Create `docs/development-workflow.md` from the template if it does not exist; fill in what
    the ADRs and config already settle.
 2. Interview on the rest, then write the answers into the document after each one.
-3. If the user changes branch names or drops `release`/`develop`, edit `branches:` in
-   `.project-kit/config.yml` too (it must keep three different names), and tell the user.
+3. **Record what was agreed as data** in `.project-kit/config.yml`: the handoff generates the
+   Spec Kit constitution from these values, not from the prose of the document, so they must
+   say the same thing as the document:
+
+   ```yaml
+   branches:            # the three permanent branches (three different names)
+     main: main
+     release: release
+     develop: develop
+   workflow:
+     spec_branch: "spec/<name>"   # how the branch of one spec is named
+     merge:                       # how pull requests are merged into each branch
+       develop: squash            # squash | merge | rebase
+       release: merge
+       main: merge
+   ```
+
+   If the user changes branch names or drops `release`/`develop`, edit `branches:` too. Tell
+   the user what you wrote.
 4. **Present** the document and the open markers; offer a clarification pass.
-5. **Approval gate.** On an explicit "yes", set `**Status**: Approved` and run
-   `project-kit approve workflow`.
+5. **Approval gate.** On an explicit choice of "Approve it", set `**Status**: Approved` and
+   run `project-kit approve workflow`.
 6. Run `project-kit status` and offer `pk-plan` next: continue now, or stop here.
 
 ## Rules
@@ -48,4 +65,6 @@ Read `.project-kit/templates/interview.md` first and follow it.
 - Do not configure anything in the provider here: branches and protection are created by
   `pk-provision`, after the plan.
 - Do not repeat technical decisions; link the ADR.
+- The document and the `workflow:` / `branches:` values of `config.yml` must never disagree.
+  If the user changes one later, change the other.
 - Write in the language of `config.yml`.

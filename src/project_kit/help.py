@@ -21,6 +21,7 @@ TERMINAL_COMMANDS = (
     ("project-kit init", "install the skills, templates and workflow in this directory"),
     ("project-kit status", "show the phases, where you are and what comes next"),
     ("project-kit doctor", "check that git, gh, uv and Spec Kit are available"),
+    ("project-kit upgrade [--apply]", "update the skills and templates a project already has"),
     ("project-kit approve <phase>", "record your sign-off of a phase"),
     ("project-kit backlog validate", "check .project-kit/backlog.json"),
     ("project-kit provision [--dry-run]", "create milestones, branches, Project, issues"),

@@ -16,24 +16,26 @@ now. Nothing is created in GitHub or GitLab here.
    - `warn` lines are optional (`uv` and Spec Kit are only needed at the handoff phase).
 2. **Read the setup.** If `.project-kit/config.yml` is missing, tell the user to run
    `project-kit init` in the terminal and stop. Otherwise read it back (project name,
-   provider, language, branches) and ask whether it is right. These are plain values that can
+   provider, language, branches) and ask with a selection list (`AskUserQuestion`: **It is
+   right** / **Change something**) whether it is right. These are plain values that can
    also be edited by hand. If the language is wrong, edit `language:` in the file.
 3. **AI co-author.** If `config.yml` says `ai_coauthor: true` and the user has not been
-   asked yet, ask whether AI assistants (Claude, Copilot...) should appear as co-authors of
-   commits and pull requests. If they do not want it:
+   asked yet, ask with a selection list (**Keep them as co-authors** / **Remove them**) whether
+   AI assistants (Claude, Copilot...) should appear as co-authors of commits and pull
+   requests. If they do not want it:
    - set `ai_coauthor: false` in `config.yml` and run `project-kit init`: it makes Claude
      Code stop signing (`attribution` in `.claude/settings.json`) and installs a
      `commit-msg` hook that strips the co-author trailer of any other assistant;
    - ask before running `git config core.hooksPath .githooks`, which switches the hook on for
      this clone. Each teammate runs that command once.
-4. **Ask how far to go now.** Offer exactly these two options:
+4. **Ask how far to go now**, with a selection list (`AskUserQuestion`, see
+   `.project-kit/templates/interview.md`) and exactly these two options. Put B first with
+   `(Recommended)` unless the user said they are in a hurry:
 
    | Option | What happens |
    |--------|--------------|
-   | **A. Only initialise** | Stop here. The user comes back later with `/pk-discover` |
    | **B. Start defining the project** | Continue now with the discovery interview |
-
-   Recommend B unless the user said they are in a hurry.
+   | **A. Only initialise** | Stop here. The user comes back later with `/pk-discover` |
 5. **If A:** run `project-kit status`, show it, and explain that `/pk-discover` is next. Done.
 6. **If B:** ask for a short description of the project in the user's own words, a few
    sentences, a pasted note or "nothing yet, ask me". Then follow the `pk-discover` skill

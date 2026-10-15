@@ -28,20 +28,59 @@ El único contrato con Spec Kit es **un fichero de texto** y sus comandos públi
 | En la constitución | Origen |
 |---|---|
 | Nombre, idioma y nombres de las ramas | `.project-kit/config.yml` |
-| Principios, flujo de ramas, Definition of Done | Plantilla genérica (ver abajo) |
+| Patrón de rama de una spec y estrategia de fusión por rama | `workflow:` de `.project-kit/config.yml` (lo escribe `/pk-workflow`) |
+| Principios y Definition of Done | Plantilla genérica (ver abajo) |
 | Decisiones registradas | `docs/adr/*.md`: título y, si lo tienen, el estado (`Status: Accepted`) |
 | Documentos y fases | `docs/project/brief.md`, `docs/project/roadmap.md` y las fases del backlog, si existen |
+| Dónde viven las reglas (índice) | Lo que existe en el proyecto: ver "Índice de reglas" |
 | Reglas propias del proyecto | `.project-kit/handoff/constitution-extra.md`, si existe |
 | Stack | "Definido por las decisiones" si hay ADRs; si no, "pendiente de un ADR" |
+
+El patrón de rama y la estrategia de fusión salen de datos, no de la prosa de
+`docs/development-workflow.md`, así que `/pk-workflow` los guarda en `config.yml` además de en
+el documento:
+
+```yaml
+workflow:
+  spec_branch: "spec/<name>"   # por defecto NNN-name
+  merge:                       # squash | merge | rebase
+    develop: squash
+    release: merge
+    main: merge
+```
+
+### Índice de reglas
+
+La constitución incluye una sección **"Where the project's rules live"** que dice dónde mirar
+para cada cosa en lugar de repetirlo en cada spec. Solo aparecen las fuentes que el proyecto
+tiene:
+
+- **Tareas y seguimiento**: el GitHub Project (título y URL, guardados al hacer `provision`) y
+  las issues son la fuente de verdad; una issue es una spec y su PR la cierra (`Closes #N`); no
+  hay una lista de tareas paralela; la tarjeta pasa a In progress, In review y Done.
+- **Backlog** (`.project-kit/backlog.json`), **alcance** (`brief.md`), **hoja de ruta**
+  (`roadmap.md`), **decisiones** (`docs/adr/`), **proceso** (`docs/development-workflow.md`) y
+  las **plantillas** de PR e issues.
+
+### Ficheros temporales
+
+`constitution-input.md` y `constitution-extra.md` solo existen para alimentar
+`/speckit-constitution`. Cuando la constitución real está escrita, la fuente única es ella, y
+**`project-kit approve handoff` los borra**. Para poder aprobar, `.specify/memory/constitution.md`
+tiene que existir y no ser ya la plantilla de Spec Kit (la plantilla vacía está llena de
+marcadores `[EN_MAYÚSCULAS]`; una constitución escrita no tiene ninguno). Si se vuelve a ejecutar
+`handoff` después, avisa de que ya está hecho y no recrea el fichero. Para cambiar las reglas
+desde entonces se enmienda la constitución con `/speckit-constitution`.
 
 ### Fichero regenerable y reglas propias
 
 `constitution-input.md` lleva la cabecera `<!-- project-kit:managed -->`: se **regenera** cada
-vez que cambian las entradas. Para añadir reglas del proyecto (seguridad, cumplimiento
-normativo, convenciones del equipo) no se edita ese fichero: se escriben en
-**`constitution-extra.md`**, que project-kit nunca toca y se añade al final como
+vez que cambian las entradas, hasta que se aprueba el relevo. Para añadir reglas del proyecto
+(seguridad, cumplimiento normativo, convenciones del equipo) no se edita ese fichero: se
+escriben en **`constitution-extra.md`**, que project-kit nunca toca y se añade al final como
 "Project-specific rules". Solo contenido de gobierno: Spec Kit rechaza peticiones de construir
-funcionalidades.
+funcionalidades. Ya no hace falta usarlo para corregir el flujo de ramas: eso sale de
+`config.yml`.
 
 Si alguien borra la cabecera de `constitution-input.md`, el fichero pasa a ser suyo y deja de
 regenerarse (se avisa; para volver a generarlo basta borrarlo).
@@ -50,8 +89,9 @@ regenerarse (se avisa; para volver a generarlo basta borrarlo).
 
 El texto base se instala con `init` en `.project-kit/templates/constitution-input.md` y puede
 editarse. Usa variables `{{...}}` (`project_name`, `language`, `provider`, `branches.main`,
-`branches.release`, `branches.develop`, `stack`, `references`, `decisions`, `extra`). Una
-variable desconocida (una errata) es un error, no se cuela en el resultado.
+`branches.release`, `branches.develop`, `spec_branch`, `merge_summary`, `stack`, `references`,
+`decisions`, `rules_index`, `extra`). Una variable desconocida (una errata) es un error, no se
+cuela en el resultado.
 
 ## Instalar Spec Kit
 
@@ -82,6 +122,7 @@ como solo depende del fichero de entrada, debería seguir funcionando.
    `/speckit-specify` y `/speckit-plan` los lean.
 3. Cada issue del backlog es candidata a una spec; su texto sirve de entrada a
    `/speckit-specify`.
-4. Cuando la constitución esté creada: `project-kit approve handoff`.
+4. Cuando la constitución esté creada: `project-kit approve handoff` (borra los ficheros
+   temporales del relevo).
 
 Las skills `pk-handoff` y `pk-provision` guían estos pasos desde Claude Code.

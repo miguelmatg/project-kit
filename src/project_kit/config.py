@@ -12,6 +12,8 @@ from project_kit.fsutil import atomic_write_text
 PROJECT_DIR = ".project-kit"
 PROVIDERS = ("github", "gitlab")
 BRANCH_KEYS = ("main", "release", "develop")
+MERGE_STRATEGIES = ("squash", "merge", "rebase")
+DEFAULT_SPEC_BRANCH = "NNN-name"
 
 
 class ConfigError(ValueError):
@@ -26,6 +28,10 @@ def _default_branches() -> dict[str, str]:
     return {"main": "main", "release": "release", "develop": "develop"}
 
 
+def _default_merge() -> dict[str, str]:
+    return {"main": "merge", "release": "merge", "develop": "squash"}
+
+
 @dataclass
 class Config:
     project_name: str
@@ -36,6 +42,10 @@ class Config:
     ai_coauthor: bool = True
     # The AI agent that guides the phases (see agents.py); empty until one is chosen.
     agent: str = ""
+    # How the team works, as data the constitution is generated from (pk-workflow sets it):
+    # the name pattern of a spec's branch, and how pull requests are merged into each branch.
+    spec_branch: str = DEFAULT_SPEC_BRANCH
+    merge: dict[str, str] = field(default_factory=_default_merge)
 
     def validate(self) -> None:
         problems = []
@@ -58,6 +68,17 @@ class Config:
             names = list(self.branches.values())
             if len(set(names)) != len(names):
                 problems.append("branches must use three different names")
+        if not self.spec_branch.strip() or any(ch.isspace() for ch in self.spec_branch):
+            problems.append("workflow.spec_branch must be a pattern without spaces, e.g. NNN-name")
+        if set(self.merge) != set(BRANCH_KEYS):
+            problems.append(f"workflow.merge must define exactly: {', '.join(BRANCH_KEYS)}")
+        else:
+            for key, how in self.merge.items():
+                if how not in MERGE_STRATEGIES:
+                    problems.append(
+                        f"workflow.merge.{key} must be one of {', '.join(MERGE_STRATEGIES)}, "
+                        f"got {how!r}"
+                    )
         if problems:
             raise ConfigError("Invalid config: " + "; ".join(problems))
 
@@ -68,6 +89,7 @@ class Config:
             "language": self.language,
             "branches": dict(self.branches),
             "ai_coauthor": self.ai_coauthor,
+            "workflow": {"spec_branch": self.spec_branch, "merge": dict(self.merge)},
         }
         if self.agent:
             data["agent"] = self.agent
@@ -92,6 +114,7 @@ def parse_config(text: str) -> Config:
         "branches",
         "ai_coauthor",
         "agent",
+        "workflow",
     }
     if unknown:
         raise ConfigError(
@@ -108,6 +131,19 @@ def parse_config(text: str) -> Config:
         if key in data and not isinstance(data[key], str):
             raise ConfigError(f"{key} must be a string")
 
+    workflow = data.get("workflow") or {}
+    if not isinstance(workflow, dict):
+        raise ConfigError("workflow must be a mapping (spec_branch, merge)")
+    extra = set(workflow) - {"spec_branch", "merge"}
+    if extra:
+        raise ConfigError(f"Unknown setting(s) in workflow: {', '.join(sorted(map(str, extra)))}")
+    raw_merge = workflow.get("merge") or {}
+    if not isinstance(raw_merge, dict):
+        raise ConfigError("workflow.merge must be a mapping (main, release, develop)")
+    spec_branch = workflow.get("spec_branch", DEFAULT_SPEC_BRANCH)
+    if not isinstance(spec_branch, str):
+        raise ConfigError("workflow.spec_branch must be a string")
+
     ai_coauthor = data.get("ai_coauthor", True)
     if not isinstance(ai_coauthor, bool):
         raise ConfigError("ai_coauthor must be true or false")
@@ -119,6 +155,8 @@ def parse_config(text: str) -> Config:
         branches=branches,
         ai_coauthor=ai_coauthor,
         agent=data.get("agent", ""),
+        spec_branch=spec_branch,
+        merge={**_default_merge(), **raw_merge},
     )
     config.validate()
     return config
