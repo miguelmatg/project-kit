@@ -55,6 +55,11 @@ desactiva una con `enabled: false`.
 - [Referencia: playbook del flujo](docs/references/template-repo-playbook.md): receta de origen
   (extraída de otro proyecto).
 
+## Licencia y contribuciones
+
+MIT ([`LICENSE`](LICENSE)). Las issues con ideas y mejoras son bienvenidas; el código lo
+desarrolla solo su autor y las pull requests están desactivadas ([`CONTRIBUTING.md`](CONTRIBUTING.md)).
+
 ## Ramas
 
 `main` (estable), `release` (pruebas) y `develop` (desarrollo). Todo entra por PR.

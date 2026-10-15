@@ -36,10 +36,10 @@ directamente a **pypi.org**.
 
 ## Lo que tienes que hacer tú (una vez)
 
-1. **Licencia (D4).** Decide una y añade `LICENSE` y el campo `license` en `pyproject.toml`.
-   PyPI no la exige, pero sin ella nadie puede usar el código legalmente.
+1. ~~Licencia (D4)~~: hecho, MIT.
 2. **Cuenta en [pypi.org](https://pypi.org/account/register/)** (no en test.pypi.org), con
-   verificación en dos pasos.
+   verificación en dos pasos. PyPI no permite entrar con GitHub: es un usuario y contraseña
+   propios.
 3. **Registrar el publicador de confianza** antes de la primera subida, en
    <https://pypi.org/manage/account/publishing/> ("Add a new pending publisher"):
 
@@ -51,14 +51,10 @@ directamente a **pypi.org**.
    | Workflow name | `release.yml` |
    | Environment name | `pypi` |
 
-4. **En GitHub** (Settings del repositorio):
-   - *Actions › General › Workflow permissions*: marca **"Allow GitHub Actions to create and
-     approve pull requests"**. Sin eso release-please no puede abrir su PR.
-   - *Environments*: crea `pypi` (se crea sola en la primera ejecución). Si quieres un freno
-     extra, añade *required reviewers*; en un repositorio privado puede requerir un plan de
-     pago.
-5. **Decidir la visibilidad (D5).** No es obligatoria para publicar, pero conviene que el
-   repositorio sea público: las URLs del paquete (`Repository`, `Issues`) apuntan a él.
+4. **En GitHub**, ya configurado: el repositorio es público, el permiso de Actions para crear
+   PRs está activo, y `develop`, `release` y `main` tienen rulesets (todo por PR, sin
+   force-push ni borrado) y las PRs de otras personas están desactivadas. El environment `pypi`
+   se crea solo en la primera ejecución; si quieres un freno extra, añade *required reviewers*.
 
 ## Primera publicación
 
@@ -97,8 +93,8 @@ credenciales de Git).
 
 ## Lista de comprobación
 
-- [ ] D4: licencia decidida; `LICENSE` y `license` en `pyproject.toml`
+- [x] D4: licencia MIT; `LICENSE` y `license` en `pyproject.toml`
 - [ ] Cuenta de PyPI con 2FA y *pending publisher* registrado
-- [ ] Ajuste de Actions "crear y aprobar PRs" activado
-- [ ] D5: repositorio público
+- [x] Ajuste de Actions "crear y aprobar PRs" activado
+- [x] D5: repositorio público
 - [ ] Primera PR a `main`; fusionar la PR de release; comprobar `uv tool install project-kit`
