@@ -1,77 +1,153 @@
 # project-kit
 
-Herramienta para el **antes** de un proyecto: definirlo, planificarlo, decidir su
-arquitectura y montar su flujo de desarrollo y gestión (GitHub primero, GitLab después).
-Al terminar entrega el relevo a [Spec Kit](https://github.com/github/spec-kit), que define e
-implementa cada spec.
+[![PyPI](https://img.shields.io/pypi/v/project-kit-cli)](https://pypi.org/project/project-kit-cli/)
+[![License: MIT](https://img.shields.io/pypi/l/project-kit-cli)](https://github.com/miguelmatg/project-kit/blob/main/LICENSE)
 
-> Estado: diseño y esqueleto del paquete (v0.1 en desarrollo). Ver [`docs/design.md`](docs/design.md).
-
-## Instalación y uso
-
-Requisitos: [uv](https://docs.astral.sh/uv/), `git`, y [`gh`](https://cli.github.com/) con
-sesión iniciada y los scopes `repo` y `project` (`gh auth refresh -s project`) para publicar en
-GitHub. [Claude Code](https://claude.com/claude-code) es el agente que guía las fases.
+**Everything that happens before the first line of code.** project-kit guides you, with an AI
+agent, through defining a project, deciding its stack and architecture, agreeing how the team
+works and planning the backlog. It then sets up GitHub and hands the project over to
+[Spec Kit](https://github.com/github/spec-kit), which specifies and builds each feature.
 
 ```
-# Instalar (ahora, desde un clon; cuando se publique será `uv tool install project-kit-cli`; el comando es `project-kit`)
-uv tool install --editable <ruta-a-este-clon>
-
-# En el repositorio del proyecto (puede estar vacío)
-project-kit doctor     # comprueba las herramientas
-project-kit init       # instala skills y plantillas; pregunta si la IA firma commits y si abrir Claude
-project-kit help       # guía visual del flujo y los comandos (también: `project-kit` a secas)
+idea ──▶ brief ──▶ decisions (ADRs) ──▶ workflow ──▶ backlog ──▶ GitHub ──▶ Spec Kit
+         /pk-discover   /pk-decide       /pk-workflow   /pk-plan   /pk-provision  /pk-handoff
 ```
 
-`init` copia los ficheros y, al terminar, muestra los agentes de IA soportados (hoy solo Claude
-Code) y ofrece abrirlo en esa misma terminal ya con **`/pk-start`** (Intro acepta). Se puede
-evitar con `--agent none`; sin terminal no pregunta ni lanza nada, y dentro de Claude Code no
-abre otro. Si lo prefieres, ábrelo tú y ejecuta `/pk-start`. Pregunta si quieres **solo
-inicializar** o **empezar a definir el proyecto**, y al terminar cada fase ofrece continuar o
-parar. `project-kit status` muestra en qué fase estás y cuál toca.
+The conversations run in your AI agent (today, [Claude Code](https://claude.com/claude-code)) as
+`/pk-…` skills: one question at a time, a recommended answer for each, and everything written to
+documents in your repository. Every phase ends with your approval, and every document can be
+written by hand instead.
 
-| Fase | Skill | Qué hace | Salida |
+> **Status: alpha.** It works end to end on GitHub with Claude Code. GitLab and other agents are
+> planned.
+
+## Requirements
+
+- [uv](https://docs.astral.sh/uv/) (it also fetches Python 3.12+ if you do not have it)
+- `git`
+- [Claude Code](https://claude.com/claude-code), to run the guided phases
+- [`gh`](https://cli.github.com/), logged in with the `repo` and `project` scopes
+  (`gh auth login`, then `gh auth refresh -s project`), to create things on GitHub
+
+`project-kit doctor` checks all of this for you. Spec Kit is installed for you at the end, if
+you want it.
+
+## Install
+
+```bash
+uv tool install project-kit-cli      # installs the `project-kit` command
+uv tool upgrade project-kit-cli      # later, to update
+```
+
+The package is called `project-kit-cli`; the command is `project-kit`. To try it without
+installing: `uvx --from project-kit-cli project-kit help`.
+
+## Quick start
+
+In your repository, new or existing:
+
+```bash
+cd my-project
+project-kit init
+```
+
+`init` copies the skills and templates into the repository and then offers to open Claude Code
+right there, already running `/pk-start` (press Enter to accept). `/pk-start` asks whether to
+**only initialise** or to **start defining the project now**, and after every phase it asks
+whether to continue or stop. You can leave at any point and come back later:
+
+```bash
+project-kit status     # where you are and what comes next
+project-kit help       # a visual guide to the flow and the commands
+```
+
+## The phases
+
+| # | Skill | What it does | Produces |
 |---|---|---|---|
-| 0 | `/pk-start` | Comprueba el entorno y elige: solo inicializar o empezar | `.project-kit/` |
-| 1 | `/pk-discover` | Entrevista sobre qué es el proyecto | `docs/project/brief.md` |
-| 2 | `/pk-decide` | Guía las decisiones de stack y arquitectura | `docs/adr/*.md` |
-| 3 | `/pk-workflow` | Acuerda el flujo de trabajo del equipo | `docs/development-workflow.md` |
-| 4 | `/pk-plan` | Deriva fases, épicas y backlog | `roadmap.md`, `backlog.json` |
-| 5 | `/pk-provision` | Crea milestones, ramas, Project e issues | GitHub |
-| 6 | `/pk-handoff` | Relevo a Spec Kit (una spec por issue) | `constitution-input.md` |
+| 0 | `/pk-start` | Checks your setup and lets you choose: only initialise, or start now | `.project-kit/` |
+| 1 | `/pk-discover` | Interviews you about the project: problem, users, scope, constraints | `docs/project/brief.md` |
+| 2 | `/pk-decide` | Guides the technical decisions: monolith or monorepo, language, package manager, data, auth, hosting | `docs/adr/*.md` |
+| 3 | `/pk-workflow` | Agrees how the team works: branches, reviews, quality gates | `docs/development-workflow.md` |
+| 4 | `/pk-plan` | Derives phases, epics and a backlog from all of the above | `docs/project/roadmap.md`, `.project-kit/backlog.json` |
+| 5 | `/pk-provision` | Creates milestones, labels, branches, the GitHub Project and the issues | GitHub |
+| 6 | `/pk-handoff` | Prepares the Spec Kit constitution; each issue becomes a spec | `.project-kit/handoff/constitution-input.md` |
 
-Cada fase termina con una aprobación (`project-kit approve <fase>`) y puede rellenarse a mano
-a partir de las plantillas de `.project-kit/templates/`. Las fases se listan en
-`.project-kit/workflow.yml`, con el mismo estilo que el de Spec Kit; para un proyecto pequeño se
-desactiva una con `enabled: false`.
+Each phase ends with an explicit approval (`project-kit approve <phase>`), and a phase cannot be
+approved while an earlier one is still open. The phases are listed in `.project-kit/workflow.yml`;
+for a small project, switch one off with `enabled: false`.
 
-## Documentación
+To fill a document by hand instead, copy the matching template from `.project-kit/templates/`
+(`brief.md`, `adr.md`, `development-workflow.md`). The skills read what is already there and only
+ask about what is missing.
 
-- [Diseño](docs/design.md): alcance, fases, proveedor, relevo a Spec Kit, decisiones abiertas.
-- [Publicación](docs/publishing.md): qué hace falta para `uv tool install project-kit-cli` público.
-- [Esquema de `backlog.json`](docs/backlog-schema.md): formato del backlog y reglas de validación.
-- [Relevo a Spec Kit](docs/handoff.md): qué genera `handoff`, cómo instala Spec Kit y qué viene después.
-- [Provisionado en GitHub](docs/provisioning.md): qué crea `provision`, idempotencia y protección de ramas.
-- [Referencia: playbook del flujo](docs/references/template-repo-playbook.md): receta de origen
-  (extraída de otro proyecto).
+## Existing repositories and Projects
 
-## Licencia y contribuciones
+`init` never overwrites a file, so it is safe in a repository that already has code, documents or
+a `.claude/` folder. Before creating a GitHub Project, `provision` looks at the ones already
+linked to the repository: with one it asks whether to use it, with several it lists them, and
+with none it asks for a name. Use `--project <number or title>` to choose without being asked.
+It never rewrites issues that already exist, and re-running it is always safe.
 
-MIT ([`LICENSE`](LICENSE)). Las issues con ideas y mejoras son bienvenidas; el código lo
-desarrolla solo su autor y las pull requests están desactivadas ([`CONTRIBUTING.md`](CONTRIBUTING.md)).
+## Commands
 
-## Ramas
+| Command | What it does |
+|---|---|
+| `project-kit init` | Install the skills, templates and workflow in the current directory |
+| `project-kit status` | Show the phases and what comes next |
+| `project-kit help` | Show a visual guide (also what plain `project-kit` prints) |
+| `project-kit doctor` | Check that git, gh, uv and Spec Kit are available |
+| `project-kit approve <phase>` | Record your sign-off of a phase |
+| `project-kit backlog validate` | Validate `.project-kit/backlog.json` |
+| `project-kit provision [--dry-run] [--project X]` | Create milestones, branches, the Project and issues on GitHub |
+| `project-kit handoff [--install-speckit]` | Generate the Spec Kit constitution input |
 
-`main` (estable), `release` (pruebas) y `develop` (desarrollo). Todo entra por PR.
+Useful `init` options: `--project-name`, `--language` (language of the generated documents),
+`--agent claude|none` (open the agent or not) and `--ai-coauthor keep|remove`.
 
-## Desarrollo
+## AI co-author
 
-Requiere [uv](https://docs.astral.sh/uv/).
+`init` asks whether AI assistants may appear as co-authors of your commits and pull requests. If
+not, it configures Claude Code to stop signing them and installs a `commit-msg` hook that strips
+the co-author trailer of other assistants. Switch the hook on once per clone with
+`git config core.hooksPath .githooks`.
+
+## After the handoff
+
+`/pk-handoff` leaves a text file for Spec Kit's constitution and tells you the next step:
 
 ```
-uv sync                 # entorno y dependencias
-uv run project-kit --version
-uv run pytest           # tests
-uv run ruff check .     # lint
-uv run ruff format .    # formato
+/speckit-constitution @.project-kit/handoff/constitution-input.md
 ```
+
+From there Spec Kit does the work. Each issue of the backlog is one spec: its text is the input of
+`/speckit-specify`, followed by `/speckit-clarify`, `/speckit-plan`, `/speckit-tasks` and
+`/speckit-implement`. project-kit never writes inside `.specify/` and does not write specs.
+
+## What it adds to your repository
+
+```
+.project-kit/          config.yml, state.json, workflow.yml, templates/, handoff/
+.claude/skills/pk-*/   the skills
+docs/project/          brief.md, roadmap.md        (created by the phases)
+docs/adr/              one file per decision       (created by the phases)
+.githooks/commit-msg   only if you removed the AI co-author
+```
+
+## Documentation
+
+More detail lives in the repository (in Spanish):
+[design](https://github.com/miguelmatg/project-kit/blob/main/docs/design.md),
+[backlog schema](https://github.com/miguelmatg/project-kit/blob/main/docs/backlog-schema.md),
+[provisioning](https://github.com/miguelmatg/project-kit/blob/main/docs/provisioning.md) and
+[Spec Kit handoff](https://github.com/miguelmatg/project-kit/blob/main/docs/handoff.md).
+
+## Feedback
+
+Ideas and bug reports are welcome as
+[issues](https://github.com/miguelmatg/project-kit/issues). Pull requests are not accepted; see
+[CONTRIBUTING](https://github.com/miguelmatg/project-kit/blob/main/CONTRIBUTING.md).
+
+## License
+
+[MIT](https://github.com/miguelmatg/project-kit/blob/main/LICENSE)
