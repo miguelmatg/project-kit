@@ -36,11 +36,17 @@ you want it.
 
 ```bash
 uv tool install project-kit-cli      # installs the `project-kit` command
-uv tool upgrade project-kit-cli      # later, to update
+uv tool upgrade project-kit-cli      # later, to update the program
 ```
 
 The package is called `project-kit-cli`; the command is `project-kit`. To try it without
 installing: `uvx --from project-kit-cli project-kit help`.
+
+**Updating a project.** `init` copies the skills and templates into your repository and never
+overwrites them, so a new version of the program does not change a project that already exists.
+Run `project-kit upgrade` inside it to see what is out of date, and `project-kit upgrade --apply`
+to bring it up to date. Files you edited are never overwritten; see
+[upgrading](https://github.com/miguelmatg/project-kit/blob/main/docs/upgrade.md).
 
 ## Quick start
 
@@ -95,6 +101,7 @@ It never rewrites issues that already exist, and re-running it is always safe.
 |---|---|
 | `project-kit init` | Install the skills, templates and workflow in the current directory |
 | `project-kit status` | Show the phases and what comes next |
+| `project-kit upgrade [--apply] [--adopt] [--diff]` | Update the skills and templates a project already has |
 | `project-kit help` | Show a visual guide (also what plain `project-kit` prints) |
 | `project-kit doctor` | Check that git, gh, uv and Spec Kit are available |
 | `project-kit approve <phase>` | Record your sign-off of a phase |
