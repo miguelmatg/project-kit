@@ -276,6 +276,7 @@ def apply_issues(
         world.items = []
     state.set_id("project", "number", str(project.number))
     state.set_id("project", "title", target.title)
+    state.set_id("project", "url", project.url)
     state.set_id("project", "id", project.id)
     save()
     provider.link_project(owner, project)
@@ -349,6 +350,9 @@ def record_existing(backlog: Backlog, world: World, state: State) -> bool:
     if world.project:
         state.set_id("project", "number", str(world.project.number))
         state.set_id("project", "id", world.project.id)
+        state.set_id("project", "url", world.project.url)
+        if world.project.title:
+            state.set_id("project", "title", world.project.title)
     remote = world.remote_by_local_id(state)
     by_number = {i.number: i for i in world.items if i.number is not None}
     for issue in backlog.issues:

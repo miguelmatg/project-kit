@@ -18,25 +18,29 @@ for the whole project.
 
 ## Asking
 
-- **One question at a time.** Never reveal the questions that are still queued.
-- Start the line with `**Question:**` and make it a full question that ends in `?` and makes
-  sense on its own (no topic labels as questions). Follow it with one plain sentence,
-  `Why it matters:`, saying what depends on the answer.
-- When there are discrete options (2 to 5, mutually exclusive), say which one you recommend
-  and why, then list all of them:
-
-  `**Recommended:** Option B - <one or two sentences of reasoning for this project>`
-
-  | Option | Description |
-  |--------|-------------|
-  | A | ... |
-  | B | ... |
-  | Other | Your own answer |
-
-  Close with: `Reply with a letter, say "yes" to take the recommendation, or write your own
-  answer.`
-- When there are no discrete options, offer a suggested answer instead:
-  `**Suggested:** <answer> - <reason>`, and accept "yes" or "suggested" as agreement.
+- **One question at a time.** Never reveal the questions that are still queued. Two or three
+  questions that clearly do not depend on each other may go together in one call.
+- **Use the agent's selection list, not typed letters.** In Claude Code, ask with the
+  `AskUserQuestion` tool whenever the answer is one of a few options: the user then picks from
+  a list with the arrow keys instead of typing. Fill it like this:
+  - `question`: a full question that ends in `?` and makes sense on its own (no topic labels as
+    questions), followed by one plain sentence saying what depends on the answer.
+  - `header`: one or two words naming the topic (12 characters at most).
+  - `options`: 2 to 4 mutually exclusive choices, each with a short `label` (one to five words)
+    and a `description` with the pros, cons and consequences **for this project**.
+  - Put your recommendation **first** and end its label with `(Recommended)`; say why in its
+    description. Do not add an "Other" option: the tool already offers one for a typed answer.
+  - Use `multiSelect: true` only when several options can be true at once (for example which
+    integrations are needed).
+  - When options need a side-by-side look (two configurations, two structures), put it in each
+    option's `preview`.
+  - More than four real alternatives: offer the three or four that fit best, and say the rest
+    are reachable through "Other".
+- **Plain text only where a list does not fit:** an open question with no discrete options (a
+  name, a number, a description). Ask it in a sentence with a suggested answer when you have
+  one: `**Suggested:** <answer> - <reason>`, and accept "yes" as agreement. The same format,
+  with the options as a table and `**Recommended:** Option B - <reason>`, is the fallback when
+  the agent has no selection tool.
 - If an answer is ambiguous, ask a quick follow-up. It does not count as a new question.
 - Stop when the topics that matter are Clear, when the user says "done", "enough" or "skip",
   or when you reach the question limit of the phase. Unanswered topics stay in the document
@@ -59,10 +63,11 @@ for the whole project.
 ## Finishing
 
 1. Tell the user what was written and which markers remain open.
-2. Offer a clarification pass: "Do you want me to look for gaps and ask a few more
-   questions, or is this good enough to approve?" A pass asks at most 5 more questions.
-3. Approval gate: ask explicitly whether the document is approved. Only an explicit "yes" in
-   this conversation allows running `project-kit approve <phase>`. Never approve on the
-   user's behalf, and never because an earlier question was answered.
-4. After approving, run `project-kit status` and offer the next phase: continue now, or
-   stop here and come back later with its skill. Respect the answer.
+2. Ask with a selection list (`AskUserQuestion`): **Approve it**, **Look for gaps first** (a
+   clarification pass of at most 5 more questions), or **I want changes** (the user says what).
+3. Approval gate: only an explicit choice of "Approve it" in this conversation allows running
+   `project-kit approve <phase>`. Never approve on the user's behalf, and never because an
+   earlier question was answered.
+4. After approving, run `project-kit status` and ask, again with a list, whether to **Continue
+   with the next phase** now or **Stop here** and come back later with its skill. Respect the
+   answer.
