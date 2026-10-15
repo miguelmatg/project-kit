@@ -14,6 +14,7 @@ from project_kit import (
     handoff,
     installer,
     provision,
+    upgrade,
 )
 from project_kit import (
     help as help_guide,
@@ -66,6 +67,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="AI agent to open when init finishes, or none (asked when omitted and a terminal "
         "is attached)",
     )
+
+    up = sub.add_parser(
+        "upgrade",
+        help="bring the skills and templates installed by init up to this version",
+    )
+    up.add_argument("--apply", action="store_true", help="write the changes (default: only show)")
+    up.add_argument(
+        "--adopt",
+        action="store_true",
+        help="also replace files whose origin is unknown (installed before project-kit kept "
+        "a record), keeping the old copies",
+    )
+    up.add_argument("--diff", action="store_true", help="show what would change in each file")
 
     sub.add_parser("status", help="show the phases of the project and what comes next")
     sub.add_parser("help", help="show a visual guide to the flow and the commands")
@@ -166,6 +180,17 @@ def _offer_agent(root: Path, requested: str | None) -> bool:
     print(f"\nStarting {agent.name} with {agent.prompt}...\n")
     agents.launch(agent, root)
     return True
+
+
+def _upgrade(args: argparse.Namespace) -> int:
+    try:
+        config = load_config(Path.cwd())
+        return upgrade.run_upgrade(
+            Path.cwd(), config, apply=args.apply, adopt=args.adopt, show_diff=args.diff
+        )
+    except (ConfigError, UnicodeDecodeError) as exc:
+        print(f"project-kit upgrade: {exc}", file=sys.stderr)
+        return 1
 
 
 def _help() -> int:
@@ -292,6 +317,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _init(args)
     if args.command == "status":
         return _status()
+    if args.command == "upgrade":
+        return _upgrade(args)
     if args.command in ("help", None):
         return _help()
     if args.command == "backlog":

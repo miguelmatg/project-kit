@@ -453,8 +453,8 @@ def _stale_template_note(root: Path) -> str | None:
         return None
     return (
         f"Note: {own.relative_to(root).as_posix()} comes from an older project-kit and lacks "
-        "the index of the project's rules and the branch settings. Delete it and run this "
-        "again to use the current template, or add `{{rules_index}}`, `{{spec_branch}}` and "
+        "the index of the project's rules and the branch settings. Run `project-kit upgrade` "
+        "to see how to bring it up to date, or add `{{rules_index}}`, `{{spec_branch}}` and "
         "`{{merge_summary}}` to your copy."
     )
 

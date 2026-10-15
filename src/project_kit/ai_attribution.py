@@ -60,6 +60,11 @@ def install_hook(root: Path) -> tuple[Path | None, str]:
     return HOOK, ""
 
 
+def hook_bytes() -> bytes:
+    """The shipped commit-msg hook, as it is installed."""
+    return (files("project_kit") / "assets" / "hooks" / "commit-msg").read_bytes()
+
+
 def hook_is_active(root: Path) -> bool:
     """True if git is already pointed at ``.githooks`` in this repository."""
     config = root / ".git" / "config"
