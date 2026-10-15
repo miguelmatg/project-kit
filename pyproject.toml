@@ -4,9 +4,23 @@ version = "0.1.0.dev0"
 description = "Project definition and dev-workflow kit that hands off to Spec Kit"
 readme = "README.md"
 requires-python = ">=3.12"
+authors = [{ name = "Miguel Tomás" }]
+keywords = ["project-management", "spec-kit", "claude-code", "workflow", "github"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development",
+]
 dependencies = [
     "pyyaml>=6.0.3",
 ]
+
+[project.urls]
+Repository = "https://github.com/miguelmatg/project-kit"
+Issues = "https://github.com/miguelmatg/project-kit/issues"
 
 [project.scripts]
 project-kit = "project_kit.cli:main"
