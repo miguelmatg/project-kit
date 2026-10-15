@@ -4,9 +4,9 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from fakes import approve_through
 
 from project_kit import handoff, installer
-from project_kit.approval import approve_phase
 from project_kit.backlog import backlog_path
 from project_kit.cli import main
 from project_kit.config import Config, ConfigError
@@ -372,7 +372,7 @@ def test_an_unapproved_plan_is_only_a_note(project):
     backlog_path(project).write_text(
         json.dumps({"version": 1, "phases": [], "issues": []}), encoding="utf-8"
     )
-    approve_phase(project, "plan")
+    approve_through(project, "plan")
     _, out, _ = run(project, FakeSystem(project, tools=["specify"]))
     assert "plan has not been approved" not in out
 

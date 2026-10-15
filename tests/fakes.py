@@ -1,5 +1,6 @@
 """An in-memory GitHub that behaves like the real one where it matters for provisioning."""
 
+from project_kit.approval import approve_phase
 from project_kit.gh import GhError
 from project_kit.providers.github import (
     ProjectItem,
@@ -10,6 +11,14 @@ from project_kit.providers.github import (
     SelectOption,
     Snapshot,
 )
+
+
+def approve_through(root, phase):
+    """Approve every gated phase before ``phase``, then ``phase`` itself."""
+    for earlier in ("discover", "decide", "workflow", "plan"):
+        approve_phase(root, earlier)
+        if earlier == phase:
+            return
 
 
 class FakeGitHub:

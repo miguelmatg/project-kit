@@ -11,6 +11,7 @@ from importlib.resources import files
 from importlib.resources.abc import Traversable
 from pathlib import Path
 
+from project_kit import ai_attribution
 from project_kit.config import PROJECT_DIR, Config, config_path, load_config, save_config
 from project_kit.fsutil import atomic_write_text
 from project_kit.state import State, save_state, state_path
@@ -19,6 +20,7 @@ from project_kit.state import State, save_state, state_path
 _ASSET_TARGETS = {
     "skills": Path(".claude") / "skills",
     "templates": Path(PROJECT_DIR) / "templates",
+    "project": Path(PROJECT_DIR),
 }
 
 
@@ -27,6 +29,7 @@ class Report:
     created: list[Path] = field(default_factory=list)
     unchanged: list[Path] = field(default_factory=list)  # exists and identical to ours
     kept: list[Path] = field(default_factory=list)  # exists and differs: left alone
+    notes: list[str] = field(default_factory=list)  # things the user should know or do
 
 
 def _walk(node: Traversable, prefix: Path = Path()) -> Iterator[tuple[Path, Traversable]]:
@@ -55,6 +58,23 @@ def _install_file(root: Path, rel: Path, content: bytes, report: Report) -> None
     report.created.append(rel)
 
 
+def _apply_ai_policy(root: Path, config: Config, report: Report) -> None:
+    """If the project asks that AI assistants are not co-authors, set that up (idempotent)."""
+    if config.ai_coauthor:
+        return
+    for create in (ai_attribution.configure_claude, ai_attribution.install_hook):
+        changed, note = create(root)
+        if changed:
+            report.created.append(changed)
+        if note:
+            report.notes.append(note)
+    if not ai_attribution.hook_is_active(root):
+        report.notes.append(
+            "To strip AI co-author trailers from every commit, run: "
+            + ai_attribution.HOOKS_PATH_COMMAND
+        )
+
+
 def init_project(root: Path, config: Config) -> Report:
     """Install project-kit into ``root``. ``config`` is used only if there is none yet."""
     report = Report()
@@ -76,4 +96,5 @@ def init_project(root: Path, config: Config) -> Report:
 
     for rel, content in iter_assets():
         _install_file(root, rel, content, report)
+    _apply_ai_policy(root, load_config(root), report)
     return report

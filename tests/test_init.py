@@ -7,7 +7,7 @@ from project_kit.cli import main
 from project_kit.config import Config, ConfigError, load_config
 from project_kit.state import load_state
 
-SKILL = Path(".claude/skills/pk-init/SKILL.md")
+SKILL = Path(".claude/skills/pk-start/SKILL.md")
 PR_TEMPLATE = Path(".project-kit/templates/github/pull_request_template.md")
 
 
@@ -20,7 +20,7 @@ def test_creates_config_state_skills_and_templates(tmp_path):
 
     assert load_config(tmp_path).language == "es"
     assert load_state(tmp_path).phase == "init"
-    assert (tmp_path / SKILL).read_text(encoding="utf-8").startswith("---\nname: pk-init")
+    assert (tmp_path / SKILL).read_text(encoding="utf-8").startswith("---\nname: pk-start")
     assert (tmp_path / PR_TEMPLATE).is_file()
     assert (tmp_path / ".project-kit/templates/github/ISSUE_TEMPLATE/feature.yml").is_file()
     assert Path(".project-kit/config.yml") in report.created
@@ -83,11 +83,11 @@ def test_missing_file_is_restored_on_rerun(tmp_path):
     assert report.created == [SKILL]
 
 
-def test_cli_requires_here(tmp_path, monkeypatch, capsys):
+def test_cli_init_works_without_here_and_says_what_comes_next(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    assert main(["init"]) == 2
-    assert "--here" in capsys.readouterr().err
-    assert not (tmp_path / ".project-kit").exists()
+    assert main(["init"]) == 0
+    assert (tmp_path / ".project-kit/config.yml").is_file()
+    assert "/pk-start" in capsys.readouterr().out
 
 
 def test_cli_init_here_uses_directory_name_by_default(tmp_path, monkeypatch, capsys):

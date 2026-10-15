@@ -170,6 +170,13 @@ def apply_plan(root: Path, provider: GitHubProvider, plan: Plan, state: State) -
             provider.create_branch(action.name, action.sha)
 
 
+def _mark_provisioned(root: Path, state: State) -> None:
+    """Save the state and record this phase as done (it has no approval prompt of its own)."""
+    if not state.is_approved("provision"):
+        state.approve("provision")
+    save_state(root, state)
+
+
 def run_provision(
     root: Path,
     provider: GitHubProvider,
@@ -207,9 +214,9 @@ def run_provision(
     total = len(plan.actions) + len(issue_plan.lines)
     if not total:
         # Nothing to change on GitHub, but a lost or stale state can still be rebuilt.
-        changed = _record_milestones(state, plan.milestone_ids)
-        if record_existing(backlog, world, state) or changed:
-            save_state(root, state)
+        _record_milestones(state, plan.milestone_ids)
+        record_existing(backlog, world, state)
+        _mark_provisioned(root, state)
         out("\nNothing to do.")
         return 0
 
@@ -227,7 +234,7 @@ def run_provision(
         save_state(root, state)
         out(f"\nStopped: {exc}\nProgress was saved; run the command again to resume.")
         return 1
-    save_state(root, state)
+    _mark_provisioned(root, state)
     for note in notes:
         out(f"\nNote: {note}")
     out(f"\nDone: {total} change(s) applied.")

@@ -2,10 +2,9 @@ import json
 import subprocess
 
 import pytest
-from fakes import FakeGitHub
+from fakes import FakeGitHub, approve_through
 
 from project_kit import installer
-from project_kit.approval import approve_phase
 from project_kit.backlog import backlog_path, parse_backlog
 from project_kit.config import Config, ConfigError
 from project_kit.gh import Gh
@@ -51,7 +50,7 @@ def snapshot(**kw):
 def project(tmp_path):
     installer.init_project(tmp_path, Config(project_name="demo"))
     backlog_path(tmp_path).write_text(json.dumps(BACKLOG), encoding="utf-8")
-    approve_phase(tmp_path, "plan")
+    approve_through(tmp_path, "plan")
     return tmp_path
 
 

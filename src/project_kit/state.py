@@ -15,7 +15,7 @@ from project_kit.config import PROJECT_DIR
 from project_kit.fsutil import atomic_write_text
 
 STATE_VERSION = 1
-PHASES = ("init", "discover", "decide", "plan", "workflow", "provision", "handoff")
+PHASES = ("init", "discover", "decide", "workflow", "plan", "provision", "handoff")
 
 
 class StateError(ValueError):
