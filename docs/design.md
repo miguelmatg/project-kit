@@ -57,17 +57,22 @@ scripts. Todas leen y escriben `.project-kit/state.json`.
 
 | Fase | Skill | Entradas | Salidas | Puerta |
 |------|-------|----------|---------|--------|
-| 0 | `pk-init` | Repo vacío o existente | `.project-kit/config.yml` (proveedor, idioma, nombres de rama); detección de `gh`/`glab`, Spec Kit, Python/Node; oferta de instalar lo que falte | Config confirmada |
+| 0 | `pk-start` (tras `project-kit init`) | Repo vacío o existente | `.project-kit/` (config, workflow.yml, plantillas), skills; comprueba `gh`/`glab`, Spec Kit, `uv`; pregunta política de coautoría de la IA y si **solo inicializar** o **empezar a definir** | Config confirmada |
 | 1 | `pk-discover` | Entrevista guiada | `docs/project/brief.md` (visión, usuarios, valor, no-objetivos, restricciones legales/negocio, riesgos) | Brief aprobado |
 | 2 | `pk-decide` | Brief | `docs/adr/NNNN-*.md` (stack, arquitectura, auth, datos, despliegue…) con opciones y decisión | ADRs críticos aceptados |
-| 3 | `pk-plan` | Brief + ADRs | `docs/project/roadmap.md`, `.project-kit/backlog.json` (fases, épicas, tarjetas con criterios de aceptación, prioridad y tamaño) | Roadmap y backlog aprobados |
-| 4 | `pk-workflow` | Config + decisiones | `docs/development-workflow.md`, `.github/` (PR/issue templates), política de ramas y de protección, normas de proceso | Normas aprobadas |
+| 3 | `pk-workflow` | Brief + ADRs + config | `docs/development-workflow.md` (ramas, revisiones, commits, versiones, puertas de calidad, DoD) | Normas aprobadas |
+| 4 | `pk-plan` | Brief + ADRs + workflow | `docs/project/roadmap.md`, `.project-kit/backlog.json` (fases, épicas, tarjetas con criterios de aceptación, prioridad y tamaño) | Roadmap y backlog aprobados |
 | 5 | `pk-provision` | Backlog + workflow + proveedor | Ramas permanentes, labels, milestones, Project (campos, estados), issues y épicas enlazadas | Confirmación antes de escribir en el proveedor |
 | 6 | `pk-handoff` | Todo lo anterior | `.project-kit/handoff/constitution-input.md` + índice de docs; instalación/inicialización de Spec Kit si falta; instrucciones para `/speckit-constitution` y primera spec | Relevo entregado |
 | — | `pk-status` / `pk-amend` | Estado | Resumen de fases; cambios posteriores (nueva épica, ADR, cambio de proceso) que actualizan docs y proveedor | — |
 
-Las fases 1–3 pueden ejecutarse en modo "ligero" (proyectos pequeños) saltando ADRs
-no críticos.
+Las fases 1–3 son **entrevistas guiadas** con la técnica de `clarify` de Spec Kit (una pregunta
+cada vez, opción recomendada, guardado tras cada respuesta, marcadores
+`[NEEDS CLARIFICATION]`) y también pueden rellenarse a mano desde las plantillas. El orden y
+las puertas viven en `.project-kit/workflow.yml`, con el estilo del `workflow.yml` de Spec Kit;
+una fase se salta con `enabled: false` (modo "ligero"). `pk-plan` no se puede aprobar
+mientras haya una puerta anterior abierta. El relevo termina en Spec Kit: cada issue es una
+spec que se redacta allí; project-kit no escribe specs.
 
 ## 5. Estructura que se instala en el proyecto destino
 
@@ -100,12 +105,13 @@ project-kit/
 ├── providers/
 │   ├── github/                      # implementación de la interfaz de proveedor
 │   └── gitlab/                      # (fase posterior)
-├── src/ (o pkg/)                    # CLI: init, doctor, install, upgrade, provision
+├── pyproject.toml                   # paquete Python (uv), entrada `project-kit`
+├── src/project_kit/                 # CLI: init, doctor, install, upgrade, provision
 ├── docs/ (diseño, referencias)
 └── tests/
 ```
 
-CLI mínimo: `project-kit init`, `doctor` (diagnóstico de requisitos), `upgrade`
+Instalación: `uv tool install project-kit-cli` (o desde git; el comando es `project-kit`) y `project-kit init --here` en la raíz del repo destino.\nCLI mínimo: `project-kit init`, `doctor` (diagnóstico de requisitos), `upgrade`
 (actualiza skills/plantillas respetando ediciones), `provision`, `status`.
 
 ## 7. Interfaz de proveedor
@@ -124,6 +130,8 @@ Operaciones que debe ofrecer un proveedor (todas idempotentes, con reintentos y 
 | `epics.link()` | checklist en el cuerpo | epics nativas (Premium) o checklist |
 | `templates.install()` | `.github/ISSUE_TEMPLATE`, PR template | `.gitlab/issue_templates`, MR templates |
 | `views.hint()` | vistas manuales (sin API) | n/a |
+
+**Implementación:** cada proveedor es código Python que invoca la CLI oficial (`gh` para GitHub, `glab` para GitLab) como **subproceso** (`subprocess`, salida `--format json`/`--json` parseada), en lugar de reimplementar su API. Hereda así la autenticación y los scopes del usuario. Los reintentos con backoff envuelven cada llamada. `doctor` comprueba que la CLI existe, la versión y los scopes (`repo`, `project`).
 
 Notas heredadas de GitHub: sin protección en repos privados con plan gratuito (debe
 detectarlo y documentarlo en las normas); sin API para crear vistas del Project;
@@ -168,18 +176,20 @@ scripts de GitHub con las correcciones, y 11 trampas conocidas (PATH de `gh`, sc
 
 | # | Decisión | Opciones | Recomendación |
 |---|----------|----------|---------------|
-| D1 | **Lenguaje/runtime e instalación** | (a) Paquete Python distribuido con `uv tool install`, CLI en Python; (b) CLI en TypeScript/Node distribuido por npm; (c) distribución con `uv` pero scripts en TS (exige Node además de Python) | Se marcaron a la vez "paquete Python con uv" y "TypeScript/Node": son incompatibles como runtime único. **Recomiendo (a)**: `uv` ya es requisito de Spec Kit, una sola dependencia y una sola instalación. Elegir (b) solo si se prefiere npm. Evitar (c) |
-| D2 | Forma de las skills | Skills de Claude Code en `.claude/skills` (como Spec Kit) / además soporte para otros agentes | Empezar con Claude Code |
-| D3 | ¿Fases 1–3 totalmente guiadas o con plantillas para rellenar a mano? | Guiadas / plantillas / ambas | Ambas: entrevista + documento editable |
+| D1 | **Lenguaje/runtime e instalación** | (a) Python con `uv tool install`; (b) TypeScript/npm; (c) mixto | **DECIDIDO: (a) Python distribuido con uv.** Se instala como Spec Kit (`uv tool install project-kit-cli`, comando `project-kit init`), copiando skills y scripts a la raíz del repo, sin `node_modules`. `uv` ya es requisito de Spec Kit: una sola dependencia. Scripts y CLI en Python |
+| D2 | Forma de las skills | Skills de Claude Code en `.claude/skills` (como Spec Kit) / además soporte para otros agentes | **DECIDIDO: solo Claude Code.** Skills en `.claude/skills`; otros agentes se valoran más adelante |
+| D3 | ¿Fases 1–3 totalmente guiadas o con plantillas para rellenar a mano? | Guiadas / plantillas / ambas | **DECIDIDO: ambas.** Entrevista guiada que genera un documento editable; también se puede rellenar la plantilla a mano |
 | D4 | Nombre y licencia | `project-kit`; licencia por decidir | Decidir antes de publicar |
 | D5 | Visibilidad del repo | Privado (ahora) → público si se quiere compartir | Privado hasta tener una versión usable |
-| D6 | Alcance del primer MVP | init + discover + plan + provision(GitHub) + handoff | Ver §12 |
+| D7 | Acceso a proveedores | API directa / CLI como subproceso | **DECIDIDO: CLI como subproceso** (`gh`, luego `glab`); requisito comprobado por `doctor` |
+| D6 | Alcance del primer MVP | init/doctor + plan + provision(GitHub) + handoff | **DECIDIDO, y revisado tras la primera prueba real:** `discover`, `decide` y `workflow` se adelantan a v0.1. Sin ellas, `pk-plan` inventaba el backlog sin un brief, y el flujo debe empezar por la entrevista |
 
 ## 12. Hoja de ruta de project-kit
 
-- **v0.1 (MVP):** `init`/`doctor`, `pk-plan` con `backlog.json`, `provision` en GitHub,
+- **v0.1 (MVP):** `init`/`doctor`/`status`, `pk-start`, `pk-discover`, `pk-decide`,
+  `pk-workflow`, `pk-plan` con `backlog.json`, `provision` en GitHub,
   `handoff` con `constitution-input.md`. Probar en un proyecto real.
-- **v0.2:** `pk-discover`, `pk-decide`, `pk-workflow` completos, plantillas sobrescribibles,
+- **v0.2:** plantillas sobrescribibles,
   `upgrade`.
 - **v0.3:** `pk-amend`/`status`, modo "solo ficheros", tests de idempotencia.
 - **v0.4:** proveedor GitLab.

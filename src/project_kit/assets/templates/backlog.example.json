@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "phases": [
+    {"id": "mvp", "title": "v0.1 MVP", "description": "First usable version"},
+    {"id": "growth", "title": "v0.2", "description": "Improvements after the first feedback"}
+  ],
+  "labels": [
+    {"name": "area:backend", "color": "0E8A16", "description": "Server side"},
+    {"name": "area:frontend", "color": "1D76DB", "description": "User interface"}
+  ],
+  "issues": [
+    {
+      "id": "epic-accounts",
+      "type": "epic",
+      "phase": "mvp",
+      "title": "User accounts",
+      "priority": "P1",
+      "size": "L",
+      "body": "Users can sign up, sign in and manage their profile."
+    },
+    {
+      "id": "adr-auth",
+      "type": "adr",
+      "phase": "mvp",
+      "title": "Decide the authentication approach",
+      "priority": "P1",
+      "size": "S",
+      "parent": "epic-accounts",
+      "body": "Compare hosted identity providers with in-house authentication."
+    },
+    {
+      "id": "sign-up",
+      "type": "feature",
+      "phase": "mvp",
+      "title": "Sign up with email and password",
+      "priority": "P1",
+      "size": "M",
+      "parent": "epic-accounts",
+      "labels": ["area:backend", "area:frontend"],
+      "body": "A visitor can create an account.",
+      "acceptance": [
+        "The form validates the email and the password strength",
+        "A confirmation email is sent",
+        "Duplicate emails are rejected with a clear message"
+      ]
+    },
+    {
+      "id": "profile-page",
+      "type": "feature",
+      "phase": "growth",
+      "title": "Profile page",
+      "priority": "P3",
+      "size": "S",
+      "parent": "epic-accounts",
+      "labels": ["area:frontend"],
+      "acceptance": ["A signed-in user can see and edit their display name"]
+    }
+  ]
+}
