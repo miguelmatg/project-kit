@@ -18,8 +18,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from project_kit.backlog import Backlog, Issue
-from project_kit.config import Config
 from project_kit.labels import PRIORITY_LABELS, TYPE_LABELS
+from project_kit.project_choice import Target
 from project_kit.providers.github import (
     GitHubProvider,
     ProjectItem,
@@ -60,10 +60,6 @@ _CHILDREN_RE = re.compile(
 )
 _MARKER_RE = re.compile(r"<!--\s*project-kit:id=[a-z0-9-]+\s*-->")
 _CHILD_LINE = re.compile(r"^- \[([ xX])\] #(\d+)", re.MULTILINE)
-
-
-def project_title(config: Config) -> str:
-    return f"{config.project_name} Roadmap"
 
 
 # --- issue bodies ------------------------------------------------------------------------
@@ -127,8 +123,8 @@ class World:
         return found
 
 
-def read_world(provider: GitHubProvider, owner: str, title: str) -> World:
-    project = provider.find_project(owner, title)
+def read_world(provider: GitHubProvider, owner: str, target: Target) -> World:
+    project = provider.find_project(owner, target.title, target.number)
     world = World(project, issues=provider.list_issues())
     if project:
         world.fields = provider.project_fields(owner, project)
@@ -170,12 +166,12 @@ class IssuePlan:
     notes: list[str] = field(default_factory=list)
 
 
-def plan_issues(backlog: Backlog, config: Config, world: World, state: State) -> IssuePlan:
+def plan_issues(backlog: Backlog, target: Target, world: World, state: State) -> IssuePlan:
     plan = IssuePlan()
     remote = world.remote_by_local_id(state)
 
     if world.project is None:
-        plan.lines.append(f"+ project    {project_title(config)}  (linked to the repository)")
+        plan.lines.append(f"+ project    {target.title}  (linked to the repository)")
     else:
         for name, options in _wanted_fields(backlog).items():
             current = world.fields.get(name)
@@ -266,19 +262,20 @@ def apply_issues(
     provider: GitHubProvider,
     owner: str,
     backlog: Backlog,
-    config: Config,
+    target: Target,
     state: State,
     save: Callable[[], None],  # called after every state change, so progress survives a crash
 ) -> list[str]:
     """Create/sync the Project and issues. Returns non-blocking notes for the user."""
     notes: list[str] = []
-    world = read_world(provider, owner, project_title(config))
+    world = read_world(provider, owner, target)
 
     project = world.project
     if project is None:
-        project = provider.create_project(owner, project_title(config))
+        project = provider.create_project(owner, target.title)
         world.items = []
     state.set_id("project", "number", str(project.number))
+    state.set_id("project", "title", target.title)
     state.set_id("project", "id", project.id)
     save()
     provider.link_project(owner, project)

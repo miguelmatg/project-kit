@@ -6,6 +6,7 @@ from typing import Any
 
 import yaml
 
+from project_kit.agents import AGENT_IDS
 from project_kit.fsutil import atomic_write_text
 
 PROJECT_DIR = ".project-kit"
@@ -31,6 +32,10 @@ class Config:
     provider: str = "github"
     language: str = "en"
     branches: dict[str, str] = field(default_factory=_default_branches)
+    # False: AI assistants must not appear as co-authors of commits and pull requests.
+    ai_coauthor: bool = True
+    # The AI agent that guides the phases (see agents.py); empty until one is chosen.
+    agent: str = ""
 
     def validate(self) -> None:
         problems = []
@@ -40,6 +45,8 @@ class Config:
             problems.append(
                 f"provider must be one of {', '.join(PROVIDERS)}, got {self.provider!r}"
             )
+        if self.agent and self.agent not in AGENT_IDS:
+            problems.append(f"agent must be one of {', '.join(AGENT_IDS)}, got {self.agent!r}")
         if not self.language.strip():
             problems.append("language must not be empty")
         if set(self.branches) != set(BRANCH_KEYS):
@@ -55,12 +62,16 @@ class Config:
             raise ConfigError("Invalid config: " + "; ".join(problems))
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        data: dict[str, Any] = {
             "project_name": self.project_name,
             "provider": self.provider,
             "language": self.language,
             "branches": dict(self.branches),
+            "ai_coauthor": self.ai_coauthor,
         }
+        if self.agent:
+            data["agent"] = self.agent
+        return data
 
 
 _HEADER = "# project-kit configuration. Safe to edit by hand.\n"
@@ -74,7 +85,14 @@ def parse_config(text: str) -> Config:
     if not isinstance(data, dict):
         raise ConfigError("config.yml must contain a mapping of settings")
 
-    unknown = set(data) - {"project_name", "provider", "language", "branches"}
+    unknown = set(data) - {
+        "project_name",
+        "provider",
+        "language",
+        "branches",
+        "ai_coauthor",
+        "agent",
+    }
     if unknown:
         raise ConfigError(
             f"Unknown setting(s) in config.yml: {', '.join(sorted(map(str, unknown)))}"
@@ -86,15 +104,21 @@ def parse_config(text: str) -> Config:
     if not isinstance(raw_branches, dict):
         raise ConfigError("branches must be a mapping (main, release, develop)")
     branches = {**_default_branches(), **raw_branches}
-    for key in ("project_name", "provider", "language"):
+    for key in ("project_name", "provider", "language", "agent"):
         if key in data and not isinstance(data[key], str):
             raise ConfigError(f"{key} must be a string")
+
+    ai_coauthor = data.get("ai_coauthor", True)
+    if not isinstance(ai_coauthor, bool):
+        raise ConfigError("ai_coauthor must be true or false")
 
     config = Config(
         project_name=data["project_name"],
         provider=data.get("provider", "github"),
         language=data.get("language", "en"),
         branches=branches,
+        ai_coauthor=ai_coauthor,
+        agent=data.get("agent", ""),
     )
     config.validate()
     return config

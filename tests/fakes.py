@@ -1,5 +1,6 @@
 """An in-memory GitHub that behaves like the real one where it matters for provisioning."""
 
+from project_kit.approval import approve_phase
 from project_kit.gh import GhError
 from project_kit.providers.github import (
     ProjectItem,
@@ -10,6 +11,14 @@ from project_kit.providers.github import (
     SelectOption,
     Snapshot,
 )
+
+
+def approve_through(root, phase):
+    """Approve every gated phase before ``phase``, then ``phase`` itself."""
+    for earlier in ("discover", "decide", "workflow", "plan"):
+        approve_phase(root, earlier)
+        if earlier == phase:
+            return
 
 
 class FakeGitHub:
@@ -25,6 +34,9 @@ class FakeGitHub:
         self.issues: list[RemoteIssue] = []
         self.project: ProjectRef | None = None
         self.linked = False
+        self.project_title = ""
+        self.other_projects: list[ProjectRef] = []
+        self.linked_numbers: set[int] = set()
         # Project fields: name -> {"id", "options": [SelectOption]}
         self.fields: dict[str, dict] = {}
         # item id -> {"number": int | None, "values": {field id: option id}}
@@ -101,8 +113,22 @@ class FakeGitHub:
 
     # --- the Project -----------------------------------------------------------------
 
-    def find_project(self, owner, title):
-        return self.project if self.project and self.project_title == title else None
+    def find_project(self, owner, title, number=None):
+        for p in self.list_projects(owner):
+            if p.number == number if number is not None else p.title == title:
+                return p
+        return None
+
+    def list_projects(self, owner):
+        own = [self._titled(self.project)] if self.project else []
+        return own + list(self.other_projects)
+
+    def linked_projects(self):
+        own = [self._titled(self.project)] if self.project and self.linked else []
+        return own + [p for p in self.other_projects if p.number in self.linked_numbers]
+
+    def _titled(self, project):
+        return ProjectRef(project.number, project.id, project.url, self.project_title)
 
     def create_project(self, owner, title):
         self._maybe_fail("project")

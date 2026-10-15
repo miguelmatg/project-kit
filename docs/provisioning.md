@@ -4,7 +4,7 @@
 ramas permanentes, el Project con sus campos y las issues.
 
 ```
-project-kit provision [--repo owner/nombre] [--dry-run] [--yes]
+project-kit provision [--repo owner/nombre] [--project número|título] [--dry-run] [--yes]
 ```
 
 ## Cómo funciona
@@ -26,7 +26,7 @@ Para aplicar hay que haber aprobado el plan (`project-kit approve plan`).
 | Milestones | Una por fase del backlog | El id se guarda en `state.json` (`provider_ids.milestones`) |
 | Labels | Derivados de las issues y declarados en `labels` | `type:epic`, `type:feature`, `type:adr`, `type:chore`, `type:docs`, `bug`, `P0`–`P3`; solo los que el backlog usa, más los declarados |
 | Ramas | `config.yml` → `branches` | `release` y `develop` si faltan, creadas desde `main` |
-| Project | `<project_name> Roadmap` | Vinculado al repositorio |
+| Project | El que ya tengas (ver abajo) o uno nuevo, `<project_name> Roadmap` por defecto | Vinculado al repositorio |
 | Campos | Del backlog | `Phase` (una opción por fase), `Kind` (Epic, Feature, ADR, Chore, Bug, Docs), `Priority` (P0–P3), `Size` (XS–XL) y `Status` (Backlog, Ready, In progress, In review, Done) |
 | Issues | Una por entrada del backlog | Milestone de su fase, labels de tipo y prioridad más los suyos, y un cuerpo con contexto, criterios de aceptación y una marca oculta (`<!-- project-kit:id=… -->`) |
 | Épicas | Las issues con `parent` | La épica lleva una checklist de sus hijas; cada hija dice `Part of #N` |
@@ -88,6 +88,23 @@ project-kit lo detecta consultando el endpoint de rulesets (GitHub responde un 4
 
 Cuando el repositorio sea público o el plan lo permita, project-kit lo reconoce y lo indica,
 pero **todavía no configura la protección**: hay que activarla a mano.
+
+## Qué Project se usa
+
+Antes de crear nada, `provision` busca los Projects **ya vinculados al repositorio** (y uno con
+el título por defecto, aunque no esté vinculado), de modo que funciona igual en un repositorio
+nuevo que en uno que ya tiene su tablero:
+
+| Encuentra | Con terminal | Sin terminal o con `--yes` |
+|---|---|---|
+| Ninguno | Pregunta el nombre (Intro: `<project_name> Roadmap`) y lo crea | Lo crea con el nombre por defecto |
+| Uno | Pregunta si usarlo (Intro: sí); si no, pide el nombre de uno nuevo | Lo usa |
+| Varios | Los lista para elegir, con la opción de crear uno nuevo | Se detiene y pide `--project` |
+
+`--project` acepta el número o el título exacto de un Project abierto del propietario, o un
+título nuevo para crearlo. Lo elegido se guarda en `.project-kit/state.json` y las siguientes
+ejecuciones lo reutilizan sin preguntar; un `--project` explícito lo sustituye. Un `--dry-run`
+pregunta pero no guarda nada. Los Projects cerrados se ignoran.
 
 ## Vistas del Project
 

@@ -11,6 +11,7 @@ def test_version_flag_prints_version(capsys):
     assert __version__ in capsys.readouterr().out
 
 
-def test_no_arguments_prints_help(capsys):
+def test_no_arguments_prints_the_visual_guide(capsys):
     assert main([]) == 0
-    assert "usage: project-kit" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "THE FLOW" in out and "IN THE TERMINAL" in out

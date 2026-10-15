@@ -13,12 +13,12 @@ from project_kit.backlog import Backlog, load_backlog
 from project_kit.config import Config, ConfigError, load_config
 from project_kit.gh import GhError
 from project_kit.labels import PRIORITY_LABELS, TYPE_LABELS
+from project_kit.project_choice import ProjectChoiceError, resolve_target
 from project_kit.providers.github import GitHubProvider, Snapshot
 from project_kit.provision_issues import (
     IssuePlan,
     apply_issues,
     plan_issues,
-    project_title,
     read_world,
     record_existing,
 )
@@ -170,6 +170,19 @@ def apply_plan(root: Path, provider: GitHubProvider, plan: Plan, state: State) -
             provider.create_branch(action.name, action.sha)
 
 
+def _describe_target(target, world) -> str:
+    if world.project is None:
+        return f"Project: {target.title} (new)"
+    return f"Project: {target.title} (#{world.project.number}, already exists)"
+
+
+def _mark_provisioned(root: Path, state: State) -> None:
+    """Save the state and record this phase as done (it has no approval prompt of its own)."""
+    if not state.is_approved("provision"):
+        state.approve("provision")
+    save_state(root, state)
+
+
 def run_provision(
     root: Path,
     provider: GitHubProvider,
@@ -178,6 +191,9 @@ def run_provision(
     assume_yes: bool,
     confirm: Callable[[str], bool],
     out: Callable[[str], None] = print,
+    project: str | None = None,
+    interactive: bool = False,
+    ask: Callable[[str], str] | None = None,
 ) -> int:
     """Returns the process exit code."""
     config = load_config(root)
@@ -194,8 +210,18 @@ def run_provision(
     protection = provider.branch_protection_available()
     plan = build_plan(backlog, config, snap)
     owner = snap.repo.owner
-    world = read_world(provider, owner, project_title(config))
-    issue_plan = plan_issues(backlog, config, world, state)
+    try:
+        target = resolve_target(
+            provider, owner, config, state,
+            requested=project, interactive=interactive, assume_yes=assume_yes, ask=ask, out=out,
+        )  # fmt: skip
+    except ProjectChoiceError as exc:
+        out(str(exc))
+        return 1
+    world = read_world(provider, owner, target)
+    if target.detected:
+        out(_describe_target(target, world))
+    issue_plan = plan_issues(backlog, target, world, state)
     out(render_plan(plan, snap.repo.full_name, protection, issue_plan))
 
     if plan.problems:
@@ -207,9 +233,9 @@ def run_provision(
     total = len(plan.actions) + len(issue_plan.lines)
     if not total:
         # Nothing to change on GitHub, but a lost or stale state can still be rebuilt.
-        changed = _record_milestones(state, plan.milestone_ids)
-        if record_existing(backlog, world, state) or changed:
-            save_state(root, state)
+        _record_milestones(state, plan.milestone_ids)
+        record_existing(backlog, world, state)
+        _mark_provisioned(root, state)
         out("\nNothing to do.")
         return 0
 
@@ -221,13 +247,13 @@ def run_provision(
     try:
         apply_plan(root, provider, plan, state)
         notes = apply_issues(
-            provider, owner, backlog, config, state, lambda: save_state(root, state)
+            provider, owner, backlog, target, state, lambda: save_state(root, state)
         )
     except GhError as exc:
         save_state(root, state)
         out(f"\nStopped: {exc}\nProgress was saved; run the command again to resume.")
         return 1
-    save_state(root, state)
+    _mark_provisioned(root, state)
     for note in notes:
         out(f"\nNote: {note}")
     out(f"\nDone: {total} change(s) applied.")

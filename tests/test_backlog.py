@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 import pytest
+from fakes import approve_through
 
 from project_kit import installer
 from project_kit.approval import approve_phase
@@ -173,16 +174,18 @@ def write_backlog(root, data):
 
 
 def test_plan_cannot_be_approved_without_a_valid_backlog(project):
+    approve_through(project, "workflow")
     with pytest.raises(BacklogError):
         approve_phase(project, "plan")
     write_backlog(project, mutated(lambda d: d["issues"][0].update(priority="P9")))
     with pytest.raises(BacklogError):
         approve_phase(project, "plan")
-    assert load_state(project).approvals == {}
+    assert not load_state(project).is_approved("plan")
 
 
 def test_approving_plan_records_it_and_advances_the_phase(project):
     write_backlog(project, valid())
+    approve_through(project, "workflow")
     state = approve_phase(project, "plan")
     assert state.is_approved("plan") and state.phase == "plan"
     assert load_state(project).is_approved("plan")
@@ -190,7 +193,7 @@ def test_approving_plan_records_it_and_advances_the_phase(project):
 
 def test_approving_an_earlier_phase_does_not_move_the_phase_back(project):
     write_backlog(project, valid())
-    approve_phase(project, "plan")
+    approve_through(project, "plan")
     assert approve_phase(project, "discover").phase == "plan"
 
 
@@ -218,6 +221,7 @@ def test_cli_backlog_validate(project, capsys):
 
 
 def test_cli_approve(project, capsys):
+    approve_through(project, "workflow")
     assert main(["approve", "plan"]) == 1
     assert "pk-plan" in capsys.readouterr().err
     write_backlog(project, valid())

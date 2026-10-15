@@ -39,7 +39,7 @@ wheels = [
 ]
 
 [[package]]
-name = "project-kit"
+name = "project-kit-cli"
 version = "0.1.0.dev0"
 source = { editable = "." }
 dependencies = [
