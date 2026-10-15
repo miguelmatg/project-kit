@@ -14,7 +14,7 @@ sesión iniciada y los scopes `repo` y `project` (`gh auth refresh -s project`) 
 GitHub. [Claude Code](https://claude.com/claude-code) es el agente que guía las fases.
 
 ```
-# Instalar (ahora, desde un clon; cuando se publique será `uv tool install project-kit`)
+# Instalar (ahora, desde un clon; cuando se publique será `uv tool install project-kit-cli`; el comando es `project-kit`)
 uv tool install --editable <ruta-a-este-clon>
 
 # En el repositorio del proyecto (puede estar vacío)
@@ -48,7 +48,7 @@ desactiva una con `enabled: false`.
 ## Documentación
 
 - [Diseño](docs/design.md): alcance, fases, proveedor, relevo a Spec Kit, decisiones abiertas.
-- [Publicación](docs/publishing.md): qué hace falta para `uv tool install project-kit` público.
+- [Publicación](docs/publishing.md): qué hace falta para `uv tool install project-kit-cli` público.
 - [Esquema de `backlog.json`](docs/backlog-schema.md): formato del backlog y reglas de validación.
 - [Relevo a Spec Kit](docs/handoff.md): qué genera `handoff`, cómo instala Spec Kit y qué viene después.
 - [Provisionado en GitHub](docs/provisioning.md): qué crea `provision`, idempotencia y protección de ramas.

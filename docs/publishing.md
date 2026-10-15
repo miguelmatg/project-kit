@@ -1,7 +1,9 @@
 # Publicar project-kit
 
-Objetivo: que cualquiera pueda ejecutar `uv tool install project-kit` (o
-`uvx project-kit init`). La publicación es automática desde `main`; las pruebas se hacen en
+Objetivo: que cualquiera pueda ejecutar `uv tool install project-kit-cli` (o
+`uvx --from project-kit-cli project-kit init`). El paquete se llama `project-kit-cli` en PyPI
+(`project-kit` estaba ocupado en la práctica para este uso) y el comando que instala es
+`project-kit`. La publicación es automática desde `main`; las pruebas se hacen en
 local, instalando el clon con `uv tool install --editable <ruta>`.
 
 ## Cómo funciona
@@ -31,7 +33,7 @@ develop ──PR──▶ release ──PR──▶ main ──(push)──▶ r
 ## TestPyPI no hace falta
 
 `test.pypi.org` es un servidor aparte, con cuentas propias, y lo que se sube ahí no lo ve
-`uv tool install project-kit`. Aquí se descarta: se prueba en local y la versión final va
+`uv tool install project-kit-cli`. Aquí se descarta: se prueba en local y la versión final va
 directamente a **pypi.org**.
 
 ## Lo que tienes que hacer tú (una vez)
@@ -45,7 +47,7 @@ directamente a **pypi.org**.
 
    | Campo | Valor |
    |---|---|
-   | PyPI project name | `project-kit` |
+   | PyPI project name | `project-kit-cli` |
    | Owner | `miguelmatg` |
    | Repository name | `project-kit` |
    | Workflow name | `release.yml` |
@@ -64,7 +66,7 @@ directamente a **pypi.org**.
 3. Mira la ejecución de *Release* en la pestaña Actions. Si termina bien, en unos minutos:
 
    ```
-   uv tool install project-kit
+   uv tool install project-kit-cli
    project-kit --version
    ```
 
@@ -97,4 +99,4 @@ credenciales de Git).
 - [ ] Cuenta de PyPI con 2FA y *pending publisher* registrado
 - [x] Ajuste de Actions "crear y aprobar PRs" activado
 - [x] D5: repositorio público
-- [ ] Primera PR a `main`; fusionar la PR de release; comprobar `uv tool install project-kit`
+- [ ] Primera PR a `main`; fusionar la PR de release; comprobar `uv tool install project-kit-cli`

@@ -1,5 +1,5 @@
 [project]
-name = "project-kit"
+name = "project-kit-cli"
 version = "0.1.0.dev0"
 description = "Project definition and dev-workflow kit that hands off to Spec Kit"
 readme = "README.md"
@@ -26,6 +26,10 @@ Issues = "https://github.com/miguelmatg/project-kit/issues"
 
 [project.scripts]
 project-kit = "project_kit.cli:main"
+
+[tool.uv.build-backend]
+# The distribution is project-kit-cli (the name free on PyPI); the package keeps its name.
+module-name = "project_kit"
 
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]
